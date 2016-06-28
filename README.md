@@ -36,6 +36,8 @@ WARRANTY.
 
 	
                        INSTALL / START
+
+Download netObservator.1.2.zip from this repo.
 					
 By the following 3 steps, you can run netObservator:
 
