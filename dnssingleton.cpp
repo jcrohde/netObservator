@@ -16,10 +16,14 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "dnssingleton.h"
-#include <ws2tcpip.h>
 #include <QDebug>
 #include <QFile>
 #include <ctime>
+#include <mutex>
+#include <functional>
+
+std::mutex myMutex;
+static const int MAXPACKETNUMBER = 100;
 
 DNSsingleton &DNSsingleton::getInstance() {
     static DNSsingleton instance;
@@ -28,6 +32,8 @@ DNSsingleton &DNSsingleton::getInstance() {
 
 DNSsingleton::DNSsingleton() {
     loadDNS();
+    std::function<void(std::vector<addressItem>&,int&)> upd = [&] (std::vector<addressItem> &items, int &max) {update(items,max);};
+    thread.start(upd);
     count = 0;
 }
 
@@ -42,43 +48,45 @@ void DNSsingleton::loadDNS() {
 }
 
 void DNSsingleton::handle(addressItem &item) {
+    myMutex.lock();
+
     std::unordered_set<addressItem>::iterator ptr = std::find(addresses.begin(),addresses.end(),item);
     if (ptr == addresses.end()) {
-        item.hostname = getHostnameFromIp(item.address);
-        addressItem ai = item;
-        ai.timeStamp = item.timeStamp + ((count%7)+1)*SECONDSPERDAY;
-        addresses.insert(ai);
-        count++;
+        item.hostname = item.address.toQString();
+        unknownHostNames.push_back(item);
     }
     else {
         item.hostname = ptr->hostname;       
     }
+
+    myMutex.unlock();
 }
 
-QString DNSsingleton::getHostnameFromIp(ipAddress &saddr)
-{
-    char *hostAddress;
-    struct addrinfo *info = 0;
-    char host[512];
-    bool valid = true;
+void DNSsingleton::update(std::vector<addressItem> &items, int &maxNumber) {
+    myMutex.lock();
 
-    saddr.print(hostAddress);
-    valid = valid && getaddrinfo(hostAddress, 0, 0, &info) == 0;
+    int size = items.size();
+    for (int i = 0; i < size; i++)
+        addresses.insert(items[i]);
 
-    if (valid) {
-        valid = getnameinfo(info->ai_addr, info->ai_addrlen, host, 512, 0, 0, 0) == 0;
-        freeaddrinfo(info);
-    }
+    items.clear();
 
-    delete []hostAddress;
+    moveElements(unknownHostNames,items);
+    moveElements(oldHosts,items);
 
-    if (valid)
-        return QString(host);
-    else
-        return "";
+    maxNumber = MAXPACKETNUMBER;
+
+    myMutex.unlock();
 }
 
+void DNSsingleton::moveElements(std::vector<addressItem> &source,std::vector<addressItem> &target) {
+    int bound =std::min((int)source.size(), (int) (MAXPACKETNUMBER-target.size()));
 
+    for (int i = 0; i < bound; i++)
+        target.push_back(source[i]);
+
+    source.erase(source.begin(),source.begin()+bound);
+}
 
 void DNSsingleton::readDNS(QString content) {
     reader.reset(new QXmlStreamReader(content));
@@ -92,8 +100,15 @@ void DNSsingleton::readDNS(QString content) {
                     while (reader->readNextStartElement()) {
                         entries.push_back(reader->readElementText());
                     }
-                    if (entries.size() > 2 && entries[2].toInt() > currentTime)
-                        addresses.insert(addressItem(ipAddress(entries[0]),entries[1],entries[2].toInt()));
+                    if (entries.size() > 2) {
+                        if (entries[2].toInt() > currentTime)
+                            addresses.insert(addressItem(ipAddress(entries[0]),entries[1],entries[2].toInt()));
+                        else {
+                            addressItem item(entries[0],entries[1],0);
+                            addresses.insert(item);
+                            oldHosts.push_back(item);
+                        }
+                    }
                 }
             }
         }
@@ -101,6 +116,7 @@ void DNSsingleton::readDNS(QString content) {
 }
 
 DNSsingleton::~DNSsingleton() {
+    thread.stop();
     saveDNS();
 }
 
@@ -118,11 +134,13 @@ void DNSsingleton::writeDNS(QString &output) {
     writer->writeStartElement(DNS);
 
     for (std::unordered_set<addressItem>::iterator iter = addresses.begin(); iter != addresses.end(); ++iter) {
-        writer->writeStartElement(DOMAINNAME);
-        writer->writeTextElement("IP",iter->address.toQString());
-        writer->writeTextElement("Name",iter->hostname);
-        writer->writeTextElement("ExpireTime",QString::number(iter->timeStamp));
-        writer->writeEndElement();
+        if (iter->timeStamp > 0) {
+            writer->writeStartElement(DOMAINNAME);
+            writer->writeTextElement("IP",iter->address.toQString());
+            writer->writeTextElement("Name",iter->hostname);
+            writer->writeTextElement("ExpireTime",QString::number(iter->timeStamp));
+            writer->writeEndElement();
+        }
     }
 
     writer->writeEndElement();

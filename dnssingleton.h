@@ -23,11 +23,11 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <memory>
 #include <unordered_set>
 #include "util.h"
+#include "dnsthread.h"
+
 
 const QString DNS = "dns";
 const QString DOMAINNAME = "domainName";
-
-const unsigned int SECONDSPERDAY = 86400;
 
 class DNSsingleton
 {
@@ -41,14 +41,19 @@ private:
     std::unique_ptr<QXmlStreamWriter> writer;
 
     std::unordered_set<addressItem> addresses;
+    std::vector<addressItem> unknownHostNames;
+    std::vector<addressItem> oldHosts;
+
+    DNSThread thread;
 
     unsigned int count;
+
+    void update(std::vector<addressItem> &items, int &maxNumber);
+    void moveElements(std::vector<addressItem> &source,std::vector<addressItem> &target);
 
     DNSsingleton();
     void loadDNS();
     void readDNS(QString content);
-
-    QString getHostnameFromIp(ipAddress &addr);
 
     ~DNSsingleton();
     void saveDNS();

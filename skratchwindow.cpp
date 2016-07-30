@@ -40,11 +40,9 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::generateDialogs() {
     help = new HelpDialog();
 
-    fileDialog = new QFileDialog;
-
     settings = new SettingsDialog();
     searchDialog = new SearchDialog();
-    settings->registerObserver(searchDialog);
+    filterEditor = new PacketFilterEditor();
 }
 
 void MainWindow::generateCenter() {
@@ -73,40 +71,61 @@ void MainWindow::generateCenter() {
 
     vert->addLayout(hori);
 
+    QHBoxLayout *sliceLayout = new QHBoxLayout();
+    sliceLabel = new QLabel("recently sniffed:");
+    sliceLayout->addWidget(sliceLabel);
+    sliceBox = new QComboBox();
+    sliceLayout->addWidget(sliceBox);
+    sliceButton = new QPushButton("Load");
+    sliceLayout->addWidget(sliceButton);
+    setSliceItemsVisible(false);
+    sliceLayout->addStretch();
+
+    vert->addLayout(sliceLayout);
+
     tableModel = new QStandardItemModel();
     display = new QTableView();
     display->setModel(tableModel);
     display->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    vert->addWidget(display);
+    QStandardItemModel *tableModel2 = new QStandardItemModel();
+    QTableView *display2 = new QTableView();
+    display2->setModel(tableModel2);
+    display2->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    sniff = new SniffThread(devs);
+
+    std::function<bool()> allowModify = [&]() {
+        return !(sniffThreadRunning || isSomeDialogOpened());
+    };
+    overView = new DisplayTab(&controller,sniff,settings,searchDialog,allowModify);
+
+    vert->addWidget(overView);
 
     center = new QDialog();
     center->setLayout(vert);
     this->setCentralWidget(center);
-
-    view = new View(tableModel);
-    view->init();
-
-    sniff = new SniffThread(tableModel,devs);
 }
 
 void MainWindow::registerObservers() {
-    server.registerObserver(searchDialog);
-    server.registerObserver(view);
-
-    settings->registerObserver(view);
     settings->registerObserver(sniff);
+    settings->registerObserver(searchDialog);
+    settings->registerObserver(overView);
 }
 
 void MainWindow::connectSignalsAndSlots() {
-    connectMethod(menuBar->newAction,[&]()->bool {server.clear(); return true;});
-    connectMethod(menuBar->openAction,[&]()->bool {return this->load();});
-    connectMethod(menuBar->saveAsAction,[&]()->bool {return this->saveFileAs();});
-    connectMethod(menuBar->saveAction,[&]()->bool {return this->saveFile();});
-    connectMethod(menuBar->closeAction,[&]()->bool {return this->close();});
+    connectMethod(menuBar->newAction,[&]()->bool {controller.clear(); return true;});
+    connectMethod(menuBar->openAction,[&]()->bool {return controller.load();});
+    connectMethod(menuBar->saveAsAction,[&]()->bool {return controller.saveFileAs();});
+    connectMethod(menuBar->saveAction,[&]()->bool {return controller.saveFile();});
+    connectMethod(menuBar->closeAction,[&]()->bool {return close();});
 
-    connectMethod(menuBar->settingsAction,[&]()->bool {return this->showSettingsDialog();});
-    connectMethod(menuBar->searchAction,[&]()->bool {return this->showSearchDialog();});
+    connectMethod(menuBar->settingsAction,[&]()->bool {settings->show(); return true;});
+    connectMethod(menuBar->searchAction,[&]()->bool {
+                      searchDialog->setWindowFlags(searchDialog->windowFlags() | Qt::WindowStaysOnTopHint);
+                      searchDialog->show();
+                      return true;});
+    connectMethod(menuBar->filterAction,[&]()->bool {filterEditor->show(); return true;});
 
     QObject::connect(searchDialog, SIGNAL (sig()),this, SLOT (startSearch()));
     QObject::connect(searchDialog,SIGNAL (browse(bool)),this, SLOT(changeText(bool)));
@@ -116,6 +135,12 @@ void MainWindow::connectSignalsAndSlots() {
     QObject::connect(this->menuBar->hintAction,SIGNAL(sigCode(stringKey)),this,SLOT(getHelp(stringKey)));
     QObject::connect(this->menuBar->licenseAction,SIGNAL(sigCode(stringKey)),this,SLOT(getHelp(stringKey)));
     QObject::connect(this->menuBar->authorAction,SIGNAL(sigCode(stringKey)),this,SLOT(getHelp(stringKey)));
+
+    QObject::connect(this->filterEditor,SIGNAL(commit(QString)),this,SLOT(getFilter(QString)));
+
+    QObject::connect(this,SIGNAL(failed(QString)),this,SLOT(loose(QString)));
+
+    QObject::connect(this->sliceButton,SIGNAL(clicked()),this,SLOT(loadSlice()));
 }
 
 void MainWindow::connectMethod(MethodAction *action, std::function<bool()> method) {
@@ -123,62 +148,10 @@ void MainWindow::connectMethod(MethodAction *action, std::function<bool()> metho
     connect(action,SIGNAL(sigMethod(methodWrapper)),this,SLOT(execute(methodWrapper)));
 }
 
-bool MainWindow::load() {
-    QString filename = fileDialog->getOpenFileName(
-        this,
-        tr("Open Document"),
-        QDir::currentPath(),
-        tr("XML (*.xml)") );
-
-    bool valid = true;
-
-    QFile file(filename);
-    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-        QString content = QString::fromUtf8(file.readAll());
-        server.load(content);
-    }
-    else valid = (filename.size() == 0);
-
-    return valid;
-}
-
-bool MainWindow::save() {
-    QFile file(fileName);
-
-    QString content = server.getContent();
-    if (content.size() == 0) {
-        setErrorMessage(QString("No sniffed information to save."),QMessageBox::Critical);
-        return true;
-    }
-
-    if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
-        file.write(content.toUtf8());
-        return true;
-    }
-
-    return false;
-}
-
-bool MainWindow::saveFileAs() {
-    fileName = fileDialog->getSaveFileName(this,tr("Save"),"Capture",tr("XML (*.xml)"));
-    if(fileName == "") return true;
-    else return save();
-}
-
-bool MainWindow::saveFile() {
-    if (fileName == "") return saveFileAs();
-    else return save();
-}
-
-bool MainWindow::showSettingsDialog() {
-    settings->show();
-    return true;
-}
-
-bool MainWindow::showSearchDialog() {
-    searchDialog->setWindowFlags(searchDialog->windowFlags() | Qt::WindowStaysOnTopHint);
-    searchDialog->show();
-    return true;
+void MainWindow::setSliceItemsVisible(bool visible) {
+    sliceLabel->setVisible(visible);
+    sliceBox->setVisible(visible);
+    sliceButton->setVisible(visible);
 }
 
 bool MainWindow::isSniffingAllowed() {
@@ -191,24 +164,16 @@ bool MainWindow::isSniffingAllowed() {
 }
 
 bool MainWindow::isSomeDialogOpened() {
-    return (fileDialog != nullptr && fileDialog->isVisible())
-        || (searchDialog != nullptr && searchDialog->isVisible())
-        || (settings != nullptr && settings->isVisible());
+    return (controller.fileDialog.isVisible())
+        || (searchDialog && searchDialog->isVisible())
+        || (settings && settings->isVisible())
+        || (filterEditor && filterEditor->isVisible());
 }
 
 void MainWindow::executeMethod(std::function<bool ()> func) {
     if (!func()) {
-        setErrorMessage(QString("The selected action did not perform successfully."),QMessageBox::Warning);
+        setErrorMessage(QString("The selected baction did not perform successfully."),QMessageBox::Warning);
     }
-
-    server.notifyObservers();
-}
-
-void MainWindow::getHelp(stringKey key) {
-    QString helpInfo = factory.getStringFromKey(key);
-    help->setWindowTitle(factory.getTitleFromKey(key));
-    help->load(helpInfo);
-    help->show();
 }
 
 void MainWindow::execute(methodWrapper func) {
@@ -222,34 +187,79 @@ void MainWindow::execute(methodWrapper func) {
         executeMethod(func.method);
 }
 
+void MainWindow::getHelp(stringKey key) {
+    QString helpInfo = factory.getStringFromKey(key);
+    help->setWindowTitle(factory.getTitleFromKey(key));
+    help->load(helpInfo);
+    help->show();
+}
+
+void MainWindow::loadSlice() {
+    methodWrapper wrapper;
+    wrapper.method = [&]()->bool {
+        return controller.loadFile(sliceBox->itemText(sliceBox->currentIndex()));
+    };
+    execute(wrapper);
+}
+
 void MainWindow::startSearch() {
     executeMethod([&]()->bool {
         SearchCommand command;
         searchDialog->setCommand(command);
 
-        return server.search(command);
+        return controller.search(command);
     });
 }
 
 void MainWindow::changeText(bool forward) {
-    executeMethod([&]()->bool {server.changeText(forward); return true;});
+    executeMethod([&]()->bool {return controller.changeText(forward);});
+}
+
+void MainWindow::loose(QString errorMsg) {
+    handleRunButton();
+    setErrorMessage(errorMsg, QMessageBox::Critical);
 }
 
 void MainWindow::handleRunButton() {
     if (sniffThreadRunning) {
-        QString xmlContent;
-
+        QString sliceName;
+        int sliceNumber;
+        std::set<ipAddress> threadAdresses;
         runBut->setText("Run");
         runBut->setIcon(QIcon("icons/run.png"));
         sniffThreadRunning = false;
-        sniff->stop(xmlContent);
-        server.load(xmlContent);
-        server.notifyObservers();
+        if (sniff->stop(sliceName, sliceNumber, threadAdresses)) {
+
+            sliceBox->clear();
+            for (int i = 1; i <= sliceNumber; i++) {
+                sliceBox->addItem(sliceName + QString::number(i) + ".xml");
+            }
+
+            setSliceItemsVisible(true);
+
+
+            QStringList filenames;
+            for (int i = 1; i <= sliceNumber; i++) {
+                filenames.append(sliceName + QString::number(i) + ".xml");
+            }
+
+            searchDialog->setFilesForSearch(filenames);
+        }
+        else {
+            searchDialog->setTabToSearch();
+            setSliceItemsVisible(false);
+        }
+        overView->setTabTitle("Sniffed",false);
+        controller.clear();
+        overView->setSniffing(false);
     }
     else if (isSniffingAllowed()) {
         sniffThreadRunning = true;
-        view->init();
-        sniff->start(devCombo->currentIndex());
+        controller.clear();
+        overView->setTabTitle("Sniffing",false);
+        overView->setSniffing(true);
+        std::function<void(QString)> lambda = [&](QString error) {emit failed(error);};
+        sniff->start(devCombo->currentIndex(),filter,lambda);
         runBut->setIcon(QIcon("icons/stop.png"));
         runBut->setText("Stop");
     }

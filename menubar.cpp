@@ -43,6 +43,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     hintAction->setShortcut(QKeySequence("Ctrl+H"));
 
     fileMenu = new QMenu("File");
+    filterAction = new MethodAction("Packet Filter",this);
     settingsAction = new MethodAction("Settings",this);
     searchAction = new MethodAction("Search",this);
     helpMenu = new QMenu("Help");
@@ -60,6 +61,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     helpMenu->addAction(authorAction);
 
     addMenu(fileMenu);
+    addAction(filterAction);
     addAction(settingsAction);
     addAction(searchAction);
     addMenu(helpMenu);

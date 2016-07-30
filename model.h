@@ -30,7 +30,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 class XmlFilter : private XmlReader {
 public:
-    bool generateFilteredString(SearchCommand cmd,QString &input, QString &output);
+    bool generateFilteredXmlDocument(SearchCommand cmd,QString &input, QString &output);
 private:
 
     std::unique_ptr<QXmlStreamWriter> writer;
@@ -44,9 +44,9 @@ private:
     int columnCount;
     bool found;
 
-    void readerAction();
+    void readerAction(QString elementText);
 
-    void handleElementText();
+    void handleElementText(QString &elementText);
     void closePacketInfo();
     void writePacketInfo();
     void reinitialize();
@@ -55,10 +55,10 @@ private:
 class XmlServer
 {
 public:
-    XmlServer();
+    XmlServer(XmlFilter *xmlFilter);
     ~XmlServer();
 
-    bool load(QString xmlContent);
+    bool load(QString xmlContent, std::set<ipAddress> addr);
     bool search(SearchCommand command);
     void changeText(bool forward);
 
@@ -67,19 +67,20 @@ public:
     void clear();
 
     void registerObserver(ModelObserver *observer) {observers.push_back(observer);}
-    void notifyObservers();
+    void notifyObservers(bool force = false);
 
 private:
-    XmlFilter filter;
+    XmlFilter *filter;
 
     bool changed;
 
     std::vector<ModelObserver*> observers;
 
+    std::set<ipAddress> addresses;
+
     QList<QString> output;
     int currentOutputIter;
 
-    bool generateFilteredString(SearchCommand cmd);
     void setAsLastDocument(QString &document);
 };
 

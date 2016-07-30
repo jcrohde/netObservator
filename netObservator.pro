@@ -25,7 +25,12 @@ SOURCES += main.cpp \
     devices.cpp \
     view.cpp \
     model.cpp \
-    dnssingleton.cpp
+    dnssingleton.cpp \
+    packetinfopresenter.cpp \
+    dnsthread.cpp \
+    packetfiltereditor.cpp \
+    displaytab.cpp \
+    controller.cpp
 
 
 INCLUDEPATH += ../WpdPack/Include \
@@ -53,4 +58,9 @@ HEADERS += \
     devices.h \
     view.h \
     model.h \
-    dnssingleton.h
+    dnssingleton.h \
+    packetinfopresenter.h \
+    dnsthread.h \
+    packetfiltereditor.h \
+    displaytab.h \
+    controller.h

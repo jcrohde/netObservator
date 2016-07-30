@@ -23,6 +23,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QStandardItemModel>
+#include <QTableView>
+#include <QFileDialog>
 #include "util.h"
 
 class SearchDialog : public QDialog, public SettingObserver, public ModelObserver
@@ -33,19 +36,24 @@ public:
 
     void setCommand(SearchCommand &command);
 
-    void update(modelState state) {
-        enableBackForwardButtons(!state.firstDocument,!state.lastDocument);
-    }
+    void setFilesForSearch(QStringList filenames);
+    void setTabToSearch();
+
+    void update(modelState state);
 
 private:
-
-    QComboBox *columnBox;
+    QComboBox *columnBox, *modeBox, *optionBox;
     QPushButton *findBut;
-    QLineEdit *findEdit;
-    QCheckBox *invertBox, *regexBox;
-    QPushButton *backBut, *forwardBut, *closeBut;
+    QLineEdit *findEdit, *fileEdit;
+    QCheckBox *invertBox;
+    QPushButton *backBut, *forwardBut, *closeBut, *fileBut;
+    QStandardItemModel *tableModel;
+    QTableView *display;
+    QFileDialog *fileDialog;
+    int addressIndex, nameIndex;
 
     void enableBackForwardButtons(bool backEnable, bool forwardEnable);
+    void updateTableModel(std::set<ipAddress> &addresses);
     void enlistColumnBox();
 
 protected:
@@ -56,9 +64,12 @@ protected:
     }
 
 private slots:
+    void enableFileSearch(int file);
     void change();
     void back();
     void forward();
+    void setHost(const QModelIndex &index);
+    void selectFiles();
 
 signals:
     void browse(bool);

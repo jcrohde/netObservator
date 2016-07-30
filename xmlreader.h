@@ -30,20 +30,31 @@ public:
 
     QString getErrorMessage() {return errorMessage;}
 
-    bool read(QString xmlContent);
+    bool read(const QString &xmlContent);
 
 protected:
-    virtual void readerAction() = 0;
-    std::unique_ptr<QXmlStreamReader> reader;
+    virtual void readerAction(QString elementText) = 0;
 
 private:
+    QXmlStreamReader reader;
+
     QString errorMessage;
 
     bool executeForAllPacketInfos();
+    void readPacket();
     bool isPacketInfoSubnode(QStringRef str);
     void raiseError(QString wrong, QString correct);
     bool getErrorState();
     void setErrorMessage();
+};
+
+class AddressExtractor : private XmlReader {
+public:
+    bool extract(const QString &xmlContent,std::set<ipAddress> &addr);
+private:
+    int counter;
+    std::set<ipAddress> addressSet;
+    void readerAction(QString elementText);
 };
 
 #endif // XMLREADER_H

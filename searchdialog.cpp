@@ -16,16 +16,21 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include <QLabel>
+#include <QList>
 #include <QGridLayout>
 #include "searchdialog.h"
+#include "dnssingleton.h"
+#include <QDebug>
 
 SearchDialog::SearchDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle("Filter");
+    setWindowTitle("Search");
     setWindowIcon(QIcon("icons/observerLogo.png"));
 
     setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+    fileDialog = new QFileDialog();
 
     QVBoxLayout *mainLayout = new QVBoxLayout();
     QHBoxLayout *set = new QHBoxLayout();
@@ -41,8 +46,10 @@ SearchDialog::SearchDialog(QWidget *parent)
     invertBox = new QCheckBox();
     invertBox->setText("invert match");
 
-    regexBox = new QCheckBox();
-    regexBox->setText("regular expression");
+    modeBox = new QComboBox();
+    modeBox->addItem("case insensitive");
+    modeBox->addItem("case sensitive");
+    modeBox->addItem("regular expression");
 
     backBut = new QPushButton(QIcon("icons/back.png"),"");
     forwardBut = new QPushButton(QIcon("icons/forward.png"),"");
@@ -58,7 +65,16 @@ SearchDialog::SearchDialog(QWidget *parent)
     enableBackForwardButtons(false,false);
 
     flagLayout->addWidget(invertBox);
-    flagLayout->addWidget(regexBox);
+    flagLayout->addWidget(modeBox);
+
+    tableModel = new QStandardItemModel();
+    display = new QTableView();
+    display->setModel(tableModel);
+    display->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    QStringList LabelList;
+    LabelList.append(LABEL[HOSTADDRESS]);
+    LabelList.append(LABEL[HOSTNAME]);
+    tableModel->setHorizontalHeaderLabels(LabelList);
 
     set->addWidget(backBut);
     set->addWidget(forwardBut);
@@ -69,14 +85,79 @@ SearchDialog::SearchDialog(QWidget *parent)
 
     mainLayout->addLayout(centralLayout);
     mainLayout->addLayout(flagLayout);
+    mainLayout->addWidget(new QLabel("by Clicking on a Host:"));
+    mainLayout->addWidget(display);
+
+    optionBox = new QComboBox;
+    optionBox->addItem("search in current tab:");
+    optionBox->addItem("search in files:");
+    mainLayout->addWidget(optionBox);
+
+    QHBoxLayout *fileLayout = new QHBoxLayout();
+    fileEdit = new QLineEdit();
+    fileLayout->addWidget(fileEdit);
+    fileBut = new QPushButton();
+    fileBut->setIcon(QIcon("icons/open.png"));
+    fileLayout->addWidget(fileBut);
+    mainLayout->addLayout(fileLayout);
+
     mainLayout->addLayout(set);
     mainLayout->addLayout(buttonLayout);
     setLayout(mainLayout);
+
+    fileEdit->setDisabled(true);
+    fileBut->setDisabled(true);
 
     connect(findBut,SIGNAL(clicked()),this,SLOT(change()));
     connect(closeBut,SIGNAL(clicked()),this,SLOT(close()));
     connect(backBut,SIGNAL(clicked()),this,SLOT(back()));
     connect(forwardBut,SIGNAL(clicked()),this,SLOT(forward()));
+    connect(display,SIGNAL(clicked(const QModelIndex &)),this,SLOT(setHost(const QModelIndex &)));
+    connect(optionBox,SIGNAL(currentIndexChanged(int)),this,SLOT(enableFileSearch(int)));
+    connect(fileBut,SIGNAL(clicked()),this,SLOT(selectFiles()));
+}
+
+void SearchDialog::setCommand(SearchCommand &command) {
+    command.settings = setting;
+    command.columnName = columnBox->currentText();
+    command.searchString = findEdit->text();
+    command.invertMatch = invertBox->isChecked();
+    command.mode = (SearchCommand::Mode) modeBox->currentIndex();
+    command.inFiles = optionBox->currentIndex();
+
+    QString text = fileEdit->text();
+
+    while (text.indexOf(",") > 0) {
+        command.filenames.append(text.left(text.indexOf(",")));
+        text = text.right(text.size()-text.indexOf(",")-1);
+    }
+    command.filenames.append(text);
+}
+
+void SearchDialog::setFilesForSearch(QStringList filenames) {
+    optionBox->setCurrentIndex(1);
+
+    fileEdit->clear();
+
+    if (filenames.size() > 0) {
+        QString str = filenames.at(0);
+        for (int i = 1; i < filenames.size(); i++) {
+            str += ",";
+            str += filenames.at(i);
+        }
+        fileEdit->insert(str);
+    }
+}
+
+void SearchDialog::setTabToSearch() {
+    optionBox->setCurrentIndex(0);
+
+    fileEdit->clear();
+}
+
+void SearchDialog::update(modelState state) {
+    enableBackForwardButtons(!state.firstDocument,!state.lastDocument);
+    updateTableModel(state.addresses);
 }
 
 void SearchDialog::enableBackForwardButtons(bool backEnable, bool forwardEnable) {
@@ -84,11 +165,42 @@ void SearchDialog::enableBackForwardButtons(bool backEnable, bool forwardEnable)
     backBut->setEnabled(backEnable);
 }
 
+void SearchDialog::updateTableModel(std::set<ipAddress> &addresses) {
+    addressItem item(ipAddress(),"name",0);
+    int row = 0;
+
+    tableModel->clear();
+
+    QStringList LabelList;
+    LabelList.append(LABEL[HOSTADDRESS]);
+    LabelList.append(LABEL[HOSTNAME]);
+    tableModel->setHorizontalHeaderLabels(LabelList);
+
+    for (std::set<ipAddress>::iterator iter = addresses.begin(); iter != addresses.end(); ++iter) {
+        item.address = *iter;
+        DNSsingleton::getInstance().handle(item);
+        QStandardItem *messageItem = new QStandardItem(item.address.toQString());
+        tableModel->setItem(row,0,messageItem);
+        if (!setting.showInfo[HOSTADDRESS])
+            messageItem->setFlags(Qt::NoItemFlags);
+        QStandardItem *messageItem2 = new QStandardItem(item.hostname);
+        tableModel->setItem(row,1,messageItem2);
+        if (!setting.showInfo[HOSTNAME])
+            messageItem2->setFlags(Qt::NoItemFlags);
+
+        row++;
+    }
+}
+
 void SearchDialog::enlistColumnBox() {
     columnBox->clear();
 
     int count = 0;
     for (int i = 0; i < COLUMNNUMBER; i++) {
+        if (i == HOSTADDRESS)
+            addressIndex = count;
+        if (i == HOSTNAME)
+            nameIndex = count;
         if (setting.showInfo[i]) {
             columnBox->addItem(LABEL[i]);
             count++;
@@ -97,14 +209,27 @@ void SearchDialog::enlistColumnBox() {
 
     columnBox->addItem(ARBITRARY);
     columnBox->setCurrentIndex(count);
+
+    int size = tableModel->rowCount();
+    for (int i = 0; i < size; i++) {
+        if (setting.showInfo[HOSTADDRESS])
+            tableModel->item(i,0)->setFlags(Qt::ItemIsEnabled);
+        else
+            tableModel->item(i,0)->setFlags(Qt::NoItemFlags);
+        if (setting.showInfo[HOSTNAME])
+            tableModel->item(i,1)->setFlags(Qt::ItemIsEnabled);
+        else
+            tableModel->item(i,1)->setFlags(Qt::NoItemFlags);
+    }
 }
 
-void SearchDialog::setCommand(SearchCommand &command) {
-    command.settings = setting;
-    command.columnName = columnBox->currentText();
-    command.searchString = findEdit->text();
-    command.invertMatch = invertBox->isChecked();
-    command.regex = regexBox->isChecked();
+void SearchDialog::enableFileSearch(int file) {
+    fileEdit->setEnabled(file);
+    fileBut->setEnabled(file);
+}
+
+void SearchDialog::change() {
+    emit sig();
 }
 
 void SearchDialog::back() {
@@ -115,7 +240,36 @@ void SearchDialog::forward() {
     emit browse(true);
 }
 
-void SearchDialog::change() {
-    emit sig();
+void SearchDialog::setHost(const QModelIndex &index) {
+    if (index.isValid()) {
+        QString host = index.data().toString();
+        if (index.column() && setting.showInfo[HOSTNAME]) {
+            columnBox->setCurrentIndex(nameIndex);
+            findEdit->setText(host);
+            modeBox->setCurrentIndex(0);
+        }
+        else if (!index.column() && setting.showInfo[HOSTADDRESS]) {
+            columnBox->setCurrentIndex(addressIndex);
+            findEdit->setText(host);
+            modeBox->setCurrentIndex(0);
+        }
+    }
+}
+
+void SearchDialog::selectFiles() {
+    QStringList filenames = fileDialog->getOpenFileNames(
+        this,
+        tr("Search in Files"),
+        QDir::currentPath(),
+        tr("XML (*.xml)") );
+
+    if (filenames.size() > 0) {
+        QString files = filenames.at(0);
+        for (int i = 1; i < filenames.size(); i++) {
+            files += ",";
+            files += filenames.at(i);
+        }
+        fileEdit->insert(files);
+    }
 }
 

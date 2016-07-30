@@ -18,26 +18,35 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <ws2tcpip.h>
 #include "sniffthread.h"
 #include "util.h"
-#include <QDebug>
+#include <QFile>
 
 static bool findaddr(std::vector<ipAddress> &addrVec, ipAddress addr) {
     return std::find(addrVec.begin(),addrVec.end(),addr) != addrVec.end();
 }
 
-void SniffThread::start(int deviceNumber) {
+void SniffThread::start(int deviceNumber, const QString &filter, std::function<void(QString)> errorfunc) {
     if (!thread.joinable()) {
+        errorHandle = errorfunc;
+        filterString = filter;
         devId = deviceNumber;
+
         bRun = true;
+        valid = true;
+
         thread = std::thread(&SniffThread::run, this);
     }
 }
 
-void SniffThread::stop(QString &content) {
+bool SniffThread::stop(QString &name, int &number, std::set<ipAddress> &threadAdresses) {
     if (thread.joinable()) {
         bRun = false;
         thread.join();
-        content = xmlContent;
+
+        number = sliceNumber;
+        name = setting.sliceFileName;
+        threadAdresses = seenAdresses;
     }
+    return valid && setting.save;
 }
 
 void SniffThread::run() {
@@ -48,33 +57,94 @@ void SniffThread::run() {
     else
         xmlContent.clear();
 
-    devRef.getLocalIpAddresses(devId,localAddresses);
+    init();
 
-    executeMainLoop(DNSsingleton::getInstance());
+    startMainLoop();
 
     if (setting.save) xmlContent += "</" + SNIFFED + ">";
+
+    if (!valid)
+        errorHandle(errorStr);
 }
 
-void SniffThread::executeMainLoop(DNSsingleton &cache) {
+void SniffThread::init() {
+    counter = 0;
+    sliceNumber = 0;
+
+    seenAdresses.clear();
+    addresses.clear();
+
+    devRef.getLocalIpAddresses(devId,localAddresses);
+}
+
+void SniffThread::startMainLoop() {
     pcap_t* handle;
+
+    handle = pcap_open_live(devRef.getDevice(devId)->name,BUFSIZ,0,1000,errorBuffer);
+    if(handle == NULL) {
+        QString errorStr = "Can not open device. ";
+        errorStr += errorBuffer;
+        valid = false;
+    }
+    else {
+        if (setFilter(handle)) {
+            executeMainLoop(handle,DNSsingleton::getInstance());
+        }
+        pcap_close(handle);
+    }
+}
+
+bool SniffThread::setFilter(pcap_t*& handle) {
+    if (!filterString.isEmpty()) {
+
+        std::string str = filterString.toStdString();
+        char *filter = new char [str.size()+1];
+        strcpy(filter, str.c_str());
+
+        bpf_u_int32 netmask =((struct sockaddr_in *) devRef.getDevice(devId)->addresses->netmask)->sin_addr.S_un.S_addr;
+        bpf_program prog;
+
+        if (valid) {
+            int i = pcap_compile(handle,&prog,filter,0,netmask);
+            if (i < 0) {
+                char *error = pcap_geterr(handle);
+                errorStr = "Can not compile filtering expression: " + QString(error);
+                valid = false;
+            }
+        }
+
+        if (valid) {
+            if (pcap_setfilter(handle, &prog) < 0) {
+                errorStr = "Can not set the packet filter for the selected device";
+                valid = false;
+            }
+        }
+    }
+
+    return valid;
+}
+
+void SniffThread::executeMainLoop(pcap_t*& handle,DNSsingleton &cache) {
     struct pcap_pkthdr *header;
     const u_char *packetData;
     int readCode;
 
-    handle = pcap_open_live(devRef.getDevice(devId)->name,BUFSIZ,0,1000,errorBuffer);
-    if(handle == NULL) {
-        QString errorMessage = "Can not open device.";
-        errorMessage += errorBuffer;
-        setErrorMessage(errorMessage, QMessageBox::Critical);
-    }
-    else {
-        do {
-            readCode = pcap_next_ex(handle, &header, &packetData);
-            if (readCode > 0) handlePacket(header, packetData,cache);
-            else if (readCode < 0) setErrorMessage("An error occured while reading a packet",QMessageBox::Critical);
-        } while(bRun && readCode >= 0);
-        pcap_close(handle);
-    }
+    do {
+        readCode = pcap_next_ex(handle, &header, &packetData);
+        if (readCode > 0) {
+            handlePacket(header, packetData,cache);
+            counter++;
+        }
+        else if (readCode < 0) {
+            errorStr = "An error occured while reading a packet";
+            valid = false;
+        }
+        if (setting.save && (!bRun || !valid || counter >= setting.sliceSize)) {
+            generateSlice();
+            counter = 0;
+        }
+    } while(bRun && readCode >= 0);
+
 }
 
 void SniffThread::handlePacket(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
@@ -91,8 +161,11 @@ void SniffThread::getPacketInfo(const struct pcap_pkthdr *header, const u_char *
 
     getTimeString();
     foundNew = getConnectedAddressInfo(ih,uh,cache);
-    content[PORT] = QString::number(currentPort);
-    content[ADDRESS] = currentHome.toQString();
+    getProtocol(ih);
+    content[HOSTPORT] = QString::number(hostPort);
+    content[LOCALPORT] = QString::number(localPort);
+    content[HOSTADDRESS] = currentHome.toQString();
+    if (setting.save) seenAdresses.insert(currentHome);
     if (bRun) {
         if (setting.showInfo[ENTIRE_PACKET] || setting.showInfo[PAYLOAD] || setting.save) readPacket(header,packetData);
     }
@@ -132,16 +205,48 @@ bool SniffThread::getConnectedAddressInfo(ipHeader *ih,udpHeader *uh,DNSsingleto
     if (findaddr(localAddresses,(ipAddress) ih->destAddr)) {
         content[DIRECTION] = "in";
         incoming = true;
-        currentPort = ntohs(uh->srcPort);
+        hostPort = ntohs(uh->srcPort);
+        localPort = ntohs(uh->destPort);
         currentHome = ih->srcAddr;
         return updateConnectedAddresses(ih->srcAddr,cache);
     }
     else {
         content[DIRECTION] = "out";
         incoming = false;
-        currentPort = ntohs(uh->destPort);
+        hostPort = ntohs(uh->destPort);
+        localPort = ntohs(uh->srcPort);
         currentHome = ih->destAddr;
         return updateConnectedAddresses(ih->destAddr,cache);
+    }
+}
+
+void SniffThread::getProtocol(ipHeader *ih) {
+    switch (ih->protocol) {
+    case 6:
+        content[PROTOCOL] = "TCP";
+        colorCode = 0;
+        break;
+
+    case 17:
+        content[PROTOCOL] = "UDP";
+        colorCode = 0;
+        break;
+
+    case 1:
+        content[PROTOCOL] = "ICMP";
+        colorCode = 2;
+        break;
+
+    case 2:
+        content[PROTOCOL] = "IGMP";
+        colorCode = 2;
+        break;
+
+    default:
+        int i = ih->protocol;
+        colorCode = 4;
+        content[PROTOCOL] = QString::number(i);
+        break;
     }
 }
 
@@ -160,12 +265,13 @@ void SniffThread::readPacket(const struct pcap_pkthdr *header,const u_char *pack
 }
 
 void SniffThread::presentPacketInfo() {
+
     if (bRun) killOldEntries();
     if (bRun && setting.save) {
         storePacketInfo();
     }
     if (bRun && foundNew) {
-        showPacketInfo();
+        packetInfo->show(content,(PacketInfoPresenter::colorCode) (colorCode + !incoming));
     }
 }
 
@@ -175,7 +281,7 @@ void SniffThread::killOldEntries() {
         i--;
         if (currentTimeInSeconds-addresses[i].timeStamp>setting.duration) {
             addresses.erase(addresses.begin() +i);
-            display->removeRow(i);
+            packetInfo->display.tableModel->removeRow(i);
         }
     }
 }
@@ -187,19 +293,19 @@ void SniffThread::storePacketInfo() {
     xmlContent += "</" + PACKETINFO + ">";
 }
 
-void SniffThread::showPacketInfo() {
-    column = 0;
-    row = display->rowCount();
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        if (setting.showInfo[i]) {
-            showAttribute(column,content[i]);
-            column++;
-        }
-    }
-}
+void SniffThread::generateSlice() {
+    xmlContent += "</" + SNIFFED + ">";
 
-void SniffThread::showAttribute(int column, QString attribute) {
-    QStandardItem *messageItem = new QStandardItem(unEscape(attribute));
-    incoming ? messageItem->setBackground(inBrush) : messageItem->setBackground(outBrush);
-    display->setItem(row,column,messageItem);
+    sliceNumber++;
+
+    QString fileName = setting.sliceFileName + QString::number(sliceNumber) + ".xml";
+    QFile file(fileName);
+
+    if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
+        file.write(xmlContent.toUtf8());
+        file.close();
+    }
+
+    xmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+    xmlContent += "<"+ SNIFFED + ">";
 }

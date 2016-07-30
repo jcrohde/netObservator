@@ -15,34 +15,44 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#include <QTableView>
-#include <QStandardItemModel>
+#include <QVBoxLayout>
 #include "util.h"
+#include "packetinfopresenter.h"
 #include "xmlreader.h"
 
 #ifndef VIEW_H
 #define VIEW_H
 
+class ViewXmlReader : private XmlReader {
+public:
+    void read(QString XmlContent, PacketInfoPresenter *packetInfo);
 
-class View: public SettingObserver, public ModelObserver, private XmlReader
+private:
+    void readerAction(QString elementText);
+    void accountRowsAndColumns();
+
+    PacketInfoPresenter *presenter;
+    int column;
+    QString content[COLUMNNUMBER];
+};
+
+class View: public SettingObserver, public ModelObserver
 {
 public:
-    View(QStandardItemModel *table) :display(table) {;}
+    View(ViewXmlReader *reader);
+    ~View() {}
 
     void update(const Settings &set);
     void update(modelState state);
     void init();
 
-private:
-    void readerAction();
-    void showAttribute(QString attribute);
-    void accountRowsAndColumns();
+    TablePacketInfoPresenter tablePacketInfo;
 
-    QList<QStandardItem*> rowItems;
-    QStandardItemModel *display;
+private:    
+    void rewriteInfo();
+
+    ViewXmlReader *xmlReader;
     QString xmlContent;
-    int column, row, shownColumn;
-    bool incoming = false;
 
 };
 

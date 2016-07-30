@@ -20,11 +20,13 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 Settings::Settings() {
     for (int i = 0; i < COLUMNNUMBER; i++) {
-        showInfo[i] = i == PORT || i == ADDRESS || i == HOSTNAME;
+        showInfo[i] = i == PROTOCOL || i == HOSTPORT || i == HOSTADDRESS;
     }
 
     save = true;
     duration = 20;
+    sliceFileName = "Slice";
+    sliceSize = 1000;
 }
 
 ipAddress::ipAddress(QString str) {

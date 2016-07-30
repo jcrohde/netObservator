@@ -24,8 +24,10 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QSlider>
 #include <QSpinBox>
 #include <QPushButton>
+#include <QFileDialog>
 #include "util.h"
 #include "stringfactory.h"
+#include "packetfiltereditor.h"
 
 class SettingsDialog : public QDialog
 {
@@ -33,7 +35,16 @@ class SettingsDialog : public QDialog
 public:
     explicit SettingsDialog(QWidget *parent = 0);
 
-    void registerObserver(SettingObserver* observer) {observers.push_back(observer);}
+    void registerObserver(SettingObserver *observer) {
+        observers.push_back(observer);
+    }
+
+    void unregisterObserver(SettingObserver *observer) {
+        std::vector<SettingObserver*>::iterator pos = std::find(observers.begin(),observers.end(),observer);
+        if (pos != observers.end())
+            observers.erase(pos);
+    }
+
 private:
     QSpinBox *durationSpinBox;
     QSlider *durationSlider;
@@ -43,11 +54,18 @@ private:
 
     QPushButton *okBut, *cancelBut;
 
+    QFileDialog *fileDialog;
+    QLineEdit *sliceNameEdit;
+    QPushButton *sliceNameBut;
+    QSpinBox *sliceSizeBox;
+
     Settings setting;
 
     std::vector<SettingObserver*> observers;
 
 private slots:
+    void selectSliceFileName();
+    void activateSlices(bool selection);
     void selectAll(bool selection);
     void changeSettings();
 };

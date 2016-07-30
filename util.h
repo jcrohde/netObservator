@@ -25,6 +25,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <memory>
 #include <functional>
 #include <qDebug>
+#include <set>
 
 typedef struct ipAddress{
     u_char byte1;
@@ -38,8 +39,16 @@ typedef struct ipAddress{
     bool operator==(const ipAddress &addr) const {
         return byte1 == addr.byte1 && byte2 == addr.byte2 && byte3 == addr.byte3 && byte4 == addr.byte4;
     }
+
     bool operator !=(const ipAddress &addr) const {
         return !(*this == addr);
+    }
+
+    bool operator<(const ipAddress &addr) const {
+        return byte1 < addr.byte1
+           || (byte1 == addr.byte1 && byte2 < addr.byte2)
+           || (byte1 == addr.byte1 && byte2 == addr.byte2 && byte3 < addr.byte3)
+           || (byte1 == addr.byte1 && byte2 == addr.byte2 && byte3 == addr.byte3 && byte4 < addr.byte4);
     }
 
     unsigned int length(u_char byte) const;
@@ -52,17 +61,21 @@ private:
 
 enum column {
     TIME = 0,
-    PORT = 1,
-    ADDRESS = 2,
-    HOSTNAME = 3,
-    DIRECTION = 4,
-    ENTIRE_PACKET = 5,
-    PAYLOAD = 6
+    PROTOCOL = 1,
+    HOSTPORT = 2,
+    HOSTADDRESS = 3,
+    HOSTNAME = 4,
+    DIRECTION = 5,
+    LOCALPORT = 6,
+    ENTIRE_PACKET = 7,
+    PAYLOAD = 8
 };
 
-const int COLUMNNUMBER = 7;
+const unsigned int SECONDSPERDAY = 86400;
 
-const QString LABEL[COLUMNNUMBER] = {"Time","Port","Address","Name","Direction","Packet","Content"};
+const int COLUMNNUMBER = 9;
+
+const QString LABEL[COLUMNNUMBER] = {"Time","Protocol","HostPort","HostAddress","HostName","Direction","LocalPort","Packet","Content"};
 
 const QString SNIFFED = "sniffed";
 const QString PACKETINFO = "packetInfo";
@@ -72,6 +85,8 @@ struct Settings {
     unsigned int duration;
 
     bool save;
+    QString sliceFileName;
+    int sliceSize;
 
     Settings();
 };
@@ -87,6 +102,7 @@ protected:
 
 struct modelState{
     QString document;
+    std::set<ipAddress> addresses;
     bool firstDocument;
     bool lastDocument;
 };
@@ -99,11 +115,19 @@ private:
 };
 
 struct SearchCommand {
+    enum Mode {
+        CASEINSENSITIVE = 0,
+        CASESENSITIVE = 1,
+        REGEX = 2
+    };
+
     Settings settings;
     bool invertMatch;
-    bool regex;
+    Mode mode;
     QString searchString;
     QString columnName;
+    bool inFiles;
+    QStringList filenames;
 };
 
 typedef struct ipHeader{
@@ -153,8 +177,6 @@ public:
 };
 }
 
-const QBrush inBrush(QColor(170,255,185));
-const QBrush outBrush(QColor(250,190,170));
 
 extern QString escape(QString content);
 extern QString unEscape(QString content);

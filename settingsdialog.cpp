@@ -20,11 +20,14 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QGroupBox>
 #include <QFrame>
 
+
 SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle("Settings");
     setWindowIcon(QIcon("icons/observerLogo.png"));
+
+    fileDialog = new QFileDialog();
 
     QVBoxLayout *ordering = new QVBoxLayout();
     QVBoxLayout *optionLayout = new QVBoxLayout();
@@ -32,10 +35,11 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     QHBoxLayout *buttonLayout = new QHBoxLayout();
 
     QGroupBox *optionFrame = new QGroupBox(this);
-    optionFrame->setTitle("Options");
+    optionFrame->setTitle("Sniffing");
     optionFrame->setStyleSheet("QGroupBox{border:1px solid gray;border-radius:5px;margin-top: 1ex;} QGroupBox::title{subcontrol-origin: margin;subcontrol-position:top center;padding:0 3px;}");
 
     optionLayout->addStretch();
+
     optionLayout->addWidget(new QLabel("duration in sec"));
 
     durationSpinBox = new QSpinBox;
@@ -54,13 +58,33 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     saveBox->setText("save");
     saveBox->setChecked(setting.save);
 
+    optionLayout->addStretch();
+
+    optionLayout->addWidget(new QLabel("Slice file name:"));
+    QHBoxLayout *sliceNameLayout = new QHBoxLayout();
+    sliceNameEdit = new QLineEdit();
+    sliceNameEdit->insert("Slice");
+    sliceNameBut = new QPushButton();
+    sliceNameBut->setIcon(QIcon("icons/open.png"));
+    sliceNameLayout->addWidget(sliceNameEdit);
+    sliceNameLayout->addWidget(sliceNameBut);
+    optionLayout->addLayout(sliceNameLayout);
+
+    optionLayout->addStretch();
+
+    optionLayout->addWidget(new QLabel("Packets per Slice:"));
+    sliceSizeBox = new QSpinBox();
+    sliceSizeBox->setRange(100,100000);
+    sliceSizeBox->setValue(1000);
+    optionLayout->addWidget(sliceSizeBox);
+
     optionFrame->setLayout(optionLayout);
 
     settingLayout->addWidget(optionFrame);
 
     QGroupBox *infoFrame = new QGroupBox(this);
 
-    infoFrame->setTitle("Information");
+    infoFrame->setTitle("Presentation");
     infoFrame->setFlat(true);
     infoFrame->setStyleSheet("QGroupBox{border:1px solid gray;border-radius:5px;margin-top: 1ex;} QGroupBox::title{subcontrol-origin: margin;subcontrol-position:top center;padding:0 3px;}");
 
@@ -101,16 +125,33 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     setLayout(ordering);
 
+    layout()->setSizeConstraint(QLayout::SetFixedSize);
+
     setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-    connect(durationSlider, SIGNAL(valueChanged(int)),
-            durationSpinBox, SLOT(setValue(int)));
-    connect(durationSpinBox, SIGNAL(valueChanged(int)),
-            durationSlider, SLOT(setValue(int)));
-    connect(allBox,SIGNAL(toggled(bool)),
-            this,SLOT(selectAll(bool)));
+    connect(durationSlider, SIGNAL(valueChanged(int)),durationSpinBox, SLOT(setValue(int)));
+    connect(durationSpinBox, SIGNAL(valueChanged(int)),durationSlider, SLOT(setValue(int)));
+    connect(allBox,SIGNAL(toggled(bool)),this,SLOT(selectAll(bool)));
+    connect(saveBox,SIGNAL(toggled(bool)),this,SLOT(activateSlices(bool)));
+    connect(sliceNameBut,SIGNAL(clicked()),this,SLOT(selectSliceFileName()));
     connect(okBut,SIGNAL(clicked()),this,SLOT(changeSettings()));
     connect(cancelBut,SIGNAL(clicked()),this,SLOT(close()));
+}
+
+void SettingsDialog::selectSliceFileName() {
+    QString filename = fileDialog->getSaveFileName(
+        this,
+        tr("Select Slice File Name"),
+        QDir::currentPath(),
+        tr("") );
+
+    sliceNameEdit->setText(filename);
+}
+
+void SettingsDialog::activateSlices(bool selection) {
+    sliceNameBut->setEnabled(selection);
+    sliceNameEdit->setEnabled(selection);
+    sliceSizeBox->setEnabled(selection);
 }
 
 void SettingsDialog::selectAll(bool selection) {
@@ -126,6 +167,8 @@ void SettingsDialog::changeSettings() {
     }
     setting.duration = durationSpinBox->value();
     setting.save = saveBox->isChecked();
+    setting.sliceFileName = sliceNameEdit->text();
+    setting.sliceSize = sliceSizeBox->value();
 
     for (auto observer: observers) {
         observer->update(setting);

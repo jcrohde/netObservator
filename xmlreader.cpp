@@ -16,6 +16,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "xmlreader.h"
+#include "dnssingleton.h"
 #include <QBuffer>
 
 XmlReader::XmlReader()
@@ -27,49 +28,62 @@ XmlReader::~XmlReader() {
 
 }
 
-bool XmlReader::read(QString xmlContent) {
-    reader.reset(new QXmlStreamReader(xmlContent));
+bool XmlReader::read(const QString &xmlContent) {
+    reader.clear();
+    reader.addData(xmlContent);
 
     return executeForAllPacketInfos();
 }
 
 bool XmlReader::executeForAllPacketInfos() {
-    if (reader->readNextStartElement()) {
-        if (reader->name() == SNIFFED){
-            while (reader->readNextStartElement()) {
-                if (reader->name() == PACKETINFO) {
-                    while (reader->readNextStartElement()) {
-                        QStringRef name = reader->name();
-                        if (isPacketInfoSubnode(name)) {
-                            readerAction();
-                        }
-                    }
+    if (reader.readNextStartElement()) {
+        if (reader.name() == SNIFFED){
+            while (reader.readNextStartElement()) {
+                if (reader.name() == PACKETINFO) {
+                    readPacket();
                 }
-                else raiseError(reader->name().toString(),PACKETINFO);
+                else raiseError(reader.name().toString(),PACKETINFO);
             }  
         }
-        else raiseError(reader->name().toString(),SNIFFED);
+        else raiseError(reader.name().toString(),SNIFFED);
     }
 
     return getErrorState();
 }
 
+void XmlReader::readPacket() {
+    int propertyCount = 0;
+    while (reader.readNextStartElement()) {
+        QStringRef name = reader.name();
+        if (isPacketInfoSubnode(name)) {
+            readerAction(reader.readElementText());
+        }
+        else
+            reader.raiseError("Wrong name of a packet property.");
+        propertyCount++;
+    }
+    if (propertyCount != COLUMNNUMBER)
+        reader.raiseError("Wrong number of properties in a packet.");
+}
+
 bool XmlReader::isPacketInfoSubnode(QStringRef str) {
     return (str == LABEL[TIME])
-            || (str == LABEL[ADDRESS])
-            || (str == LABEL[PORT])
+            || (str == LABEL[PROTOCOL])
+            || (str == LABEL[HOSTADDRESS])
+            || (str == LABEL[HOSTPORT])
             || (str == LABEL[HOSTNAME])
             || (str == LABEL[DIRECTION])
+            || (str == LABEL[LOCALPORT])
             || (str == LABEL[ENTIRE_PACKET])
             || (str == LABEL[PAYLOAD]);
 }
 
 void XmlReader::raiseError(QString wrong, QString correct) {
-    reader->raiseError("Wrong start element " + wrong + " instead of " + correct);
+    reader.raiseError("Wrong start element " + wrong + " instead of " + correct);
 }
 
 bool XmlReader::getErrorState() {
-    if (reader->error() == QXmlStreamReader::NoError)
+    if (reader.error() == QXmlStreamReader::NoError)
         return true;
     else {
         setErrorMessage();
@@ -78,10 +92,29 @@ bool XmlReader::getErrorState() {
 }
 
 void XmlReader::setErrorMessage() {
-    if (reader->error() == QXmlStreamReader::CustomError)
-        errorMessage = reader->errorString();
-    else if (reader->error() == QXmlStreamReader::NotWellFormedError)
+    if (reader.error() == QXmlStreamReader::CustomError)
+        errorMessage = reader.errorString();
+    else if (reader.error() == QXmlStreamReader::NotWellFormedError)
         errorMessage = "The XML file is not well-formed";
     else
         errorMessage = "An unexpected error occured";
+}
+
+bool AddressExtractor::extract(const QString &xmlContent, std::set<ipAddress> &addr) {
+    addressSet.clear();
+    counter = 0;
+
+    bool valid = read(xmlContent);
+
+    if (valid) addr = addressSet;
+
+    return valid;
+}
+
+void AddressExtractor::readerAction(QString elementText) {
+    if ((counter % COLUMNNUMBER) == HOSTADDRESS) {
+        ipAddress addr(elementText);
+        addressSet.insert(addr);
+    }
+    counter++;
 }

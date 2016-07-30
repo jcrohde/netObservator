@@ -18,72 +18,57 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QStandardItemModel>
 #include "view.h"
 
-void View::update(const Settings &set) {
-    SettingObserver::update(set);
+void ViewXmlReader::read(QString XmlContent, PacketInfoPresenter *packetInfo) {
+    presenter = packetInfo;
     column = 0;
-    row = 0;
-    shownColumn = 0;
 
-    init();
-    if (xmlContent.size() > 0)
-        read(xmlContent);
+    XmlReader::read(XmlContent);
 }
 
-void View::update(modelState state) {
-    xmlContent = state.document;
-    column = 0;
-    shownColumn = 0;
-    row = 0;
-
-    init();
-
-    read(xmlContent);
-}
-
-void View::readerAction() {
-    QString attribute = reader->readElementText();
-    if (column == DIRECTION) {
-        incoming = attribute == "->" || attribute == "-&gt;" || attribute == "in";
-    }
-    if (SettingObserver::setting.showInfo[column]) {
-        showAttribute(attribute);
-    }
+void ViewXmlReader::readerAction(QString elementText) {
+    content[column] = elementText;
     accountRowsAndColumns();
 }
 
-void View::showAttribute(QString attribute) {
-
-    QStandardItem *messageItem = new QStandardItem(unEscape(attribute));  
-    rowItems.append(messageItem);
-    display->setItem(row,shownColumn,messageItem);
-    shownColumn++;
-}
-
-void View::accountRowsAndColumns() {
+void ViewXmlReader::accountRowsAndColumns() {
     if (column == COLUMNNUMBER - 1) {
-        for (int i = 0; i < shownColumn; i++)
-            incoming ? rowItems[i]->setBackground(inBrush) : rowItems[i]->setBackground(outBrush);
-        incoming = false;
-        rowItems.clear();
-        shownColumn = 0;
+        presenter->show(content);
         column = 0;
-        row++;
     }
     else
         column++;
 }
 
-void View::init() {
-    rowItems.clear();
-    display->clear();
-    display->setRowCount(0);
+View::View(ViewXmlReader *reader) : xmlReader(reader){
+    //page = new QDialog();
+    //packetInfo = &tablePacketInfo;
 
-    QStringList LabelList;
+    /*QVBoxLayout *pageLayout = new QVBoxLayout();
+    pageLayout->addWidget(tablePacketInfo.display.display);
+    page->setLayout(pageLayout);*/
+}
 
-    for (int i = 0; i< COLUMNNUMBER; i++) {
-        if (SettingObserver::setting.showInfo[i]) LabelList.push_back(LABEL[i]);
+void View::update(const Settings &set) {
+    SettingObserver::update(set);
+
+    tablePacketInfo.update(set);
+
+    rewriteInfo();
+}
+
+void View::rewriteInfo() {
+    init();
+    if (xmlContent.size() > 0) {
+        xmlReader->read(xmlContent, &tablePacketInfo);
     }
+}
 
-    display->setHorizontalHeaderLabels(LabelList);
-    row = 0;
+void View::update(modelState state) {
+    xmlContent = state.document;
+
+    rewriteInfo();
+}
+
+void View::init() {
+    tablePacketInfo.init();
 }
