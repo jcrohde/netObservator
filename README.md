@@ -36,8 +36,6 @@ WARRANTY.
 
 	
                        INSTALL / START
-
-Download netObservator.1.2.zip from this repo.
 					
 By the following 3 steps, you can run netObservator:
 
@@ -53,8 +51,8 @@ with the installer you got with this package.
 
                        GENERAL INFORMATION
 
-netObservator is a small and simple to use sniffer app. The goal is to give
-you an overview about the connections of your computer.
+netObservator is a simple to use sniffer app. The goal is to give you information
+about the connections of your computer.
 
 When you start to sniff, only information about the first packet of a
 connection with another host will be displayed. This information will
@@ -62,14 +60,10 @@ disappear some time after the last packet from or to this host has been
 sniffed. This will give you an overview of the hosts you are currently
 connected with.
 
-When you use netObservator at first time, it might be slow, since the host
-name needs to be extra resolved by a DNS server. It is the philosophy of
-netObservator that it is important to provide you the names of the hosts you
-are connected with. The domain name will be stored and netObservator will
-become faster.
+After sniffing information about all packets can be displayed and stored in
+XML files. These slices can be displayed after sniffing.
 
-After sniffing information about all packets can be displayed and stored in an
-XML file. You can also filter the sniffed packets by using search strings.
+You can search on these files. Moreover you can also edit filters for sniffing.
 
 For a quick start just select the device of your internet connection and click
 the "Run"-button. Then the program starts to sniff. If you press this button a
