@@ -63,7 +63,8 @@ connected with.
 After sniffing information about all packets can be displayed and stored in
 XML files. These slices can be displayed after sniffing.
 
-You can search on these files. Moreover you can also edit filters for sniffing.
+You can search on these files and visualize information you have got by
+sniffing. Moreover you can also edit filters for sniffing.
 
 For a quick start just select the device of your internet connection and click
 the "Run"-button. Then the program starts to sniff. If you press this button a
