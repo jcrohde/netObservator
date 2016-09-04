@@ -18,7 +18,7 @@ netObservator. If not, see http://www.gnu.org/licenses/.
 
                        LIBRARIES
 
-netObservator is written in QT 5.2.0 for 32bit Windows systems (and runs also
+netObservator is written in QT 5.7.0 for 32bit Windows systems (and runs also
 on 64bit Windows machines).
 
 netObservator uses the third party software WinPcap. netObservator was
