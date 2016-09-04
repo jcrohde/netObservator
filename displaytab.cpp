@@ -17,22 +17,12 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include "displaytab.h"
 
-modelView::modelView(ViewXmlReader *reader, XmlFilter *filter)
-    : view(reader), model(filter) {
-    model.registerObserver(&view);
-}
 
-DisplayTab::DisplayTab(Controller *c, SniffThread *sth, SettingsDialog *set, SearchDialog *sDlg, std::function<bool()> modifiable)
-    : controller(c), sniff(sth), searchDlg(sDlg), settingSubject(set), canBeModified(modifiable)
+DisplayTab::DisplayTab(Controller *c)
+    : controll(c)
 {
+    fixed = false;
     displayCount = 0;
-
-    sniffing = false;
-
-    std::function<void(QString,bool)> tabLambda = [&](QString title,bool add) {setTabTitle(title,add);};
-    controller->setTabTitle = tabLambda;
-
-    controller->getTabTitle = [&]()->QString {return tabText(myIndex);};
 
     add();
     setToCurrentTab(0);
@@ -50,39 +40,35 @@ DisplayTab::DisplayTab(Controller *c, SniffThread *sth, SettingsDialog *set, Sea
     connect(this,SIGNAL(currentChanged(int)),this,SLOT(setToCurrentTab(int)));
 }
 
-void DisplayTab::updateData(int index) {
-    currentModel = &dynamic_cast<Page*>(widget(index))->mv.model;
-    currentModelPresenter = &dynamic_cast<Page*>(widget(index))->mv.view.tablePacketInfo;
-    controller->setModel(currentModel);
+void DisplayTab::update(const serverState &state) {
+    setTabText(currentIndex(),state.title);
+    dynamic_cast<Page*>(widget(currentIndex()))->setSlicesVisible(state.sliceNames);
 }
 
-void DisplayTab::setTabTitle(QString title, bool add) {
-    setTabText(myIndex,(add ? tabText(myIndex) : "") + title);
+void DisplayTab::fixCurrentTab(bool fix) {
+    fixed = fix;
+    fixIndex = currentIndex();
 }
 
-void DisplayTab::update(const Settings &set) {
-    SettingObserver::update(set);
+void DisplayTab::updateController(int index) {
+    controll->setModelView(&dynamic_cast<Page*>(widget(index))->mv);
 }
 
 void DisplayTab::add() {
-    if (canBeModified()) {
+    if (!fixed) {
         Page *page = new Page(&reader,&filter);
-        page->mv.view.update(setting);
-        page->mv.model.registerObserver(searchDlg);
-
-        if (settingSubject != 0) {
-            settingSubject->registerObserver(&page->mv.view);
-            page->settings = settingSubject;
-        }
 
         displayCount++;
-        addTab(page, "display " + QString::number(displayCount));
-        updateData(0);
+        addTab(page,"Display " + QString::number(displayCount));
+        page->mv.model.setTitle("Display " + QString::number(displayCount));
+        setCurrentWidget(widget(count()-1));
+
+        connect(page->sliceBox,SIGNAL(currentIndexChanged(QString)),this,SLOT(loadSlice(QString)));
     }
 }
 
 void DisplayTab::closeTab(int index) {
-    if (canBeModified() && count() > 1) {
+    if (!fixed && count() > 1) {
         QWidget *tab = widget(index);
         removeTab(index);
         delete tab;
@@ -90,10 +76,19 @@ void DisplayTab::closeTab(int index) {
 }
 
 void DisplayTab::setToCurrentTab(int index) {
-    if (!sniffing) {
-        myIndex = index;
-        updateData(index);
-        sniff->setPacketInfoPresenter(currentModelPresenter);
-        currentModel->notifyObservers(true);
+    if (fixed) {
+        if (index != fixIndex)
+            setCurrentWidget(widget(fixIndex));
+    }
+    else
+        updateController(index);
+}
+
+void DisplayTab::loadSlice(QString sliceName) {
+    if (sliceName.size() > 0) {
+        Command cmd;
+        cmd.arguments.append(sliceName);
+        cmd.code = CommandCode::LOADSLICE;
+        controll->getCommand(cmd);
     }
 }

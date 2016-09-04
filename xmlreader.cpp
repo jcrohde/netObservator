@@ -19,8 +19,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "dnssingleton.h"
 #include <QBuffer>
 
-XmlReader::XmlReader()
-{
+XmlReader::XmlReader() {
 
 }
 
@@ -73,25 +72,27 @@ bool XmlReader::isPacketInfoSubnode(QStringRef str) {
             || (str == LABEL[HOSTPORT])
             || (str == LABEL[HOSTNAME])
             || (str == LABEL[DIRECTION])
-            || (str == LABEL[LOCALPORT])
+            || (str == LABEL[LOCALSRCPORT])
+            || (str == LABEL[LOCALSRCADDRESS])
             || (str == LABEL[ENTIRE_PACKET])
             || (str == LABEL[PAYLOAD]);
 }
 
 void XmlReader::raiseError(QString wrong, QString correct) {
-    reader.raiseError("Wrong start element " + wrong + " instead of " + correct);
+    reader.raiseError("Wrong start element \"" + wrong + "\" instead of \"" + correct + "\".");
 }
 
 bool XmlReader::getErrorState() {
     if (reader.error() == QXmlStreamReader::NoError)
         return true;
     else {
-        setErrorMessage();
+        writeErrorMessage();
+        setErrorMessage("Can not parse the XML file: " + errorMessage, QMessageBox::Critical);
         return false;
     }
 }
 
-void XmlReader::setErrorMessage() {
+void XmlReader::writeErrorMessage() {
     if (reader.error() == QXmlStreamReader::CustomError)
         errorMessage = reader.errorString();
     else if (reader.error() == QXmlStreamReader::NotWellFormedError)

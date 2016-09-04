@@ -20,8 +20,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QMenuBar>
 #include "intaction.h"
-#include "methodaction.h"
-#include "stringfactory.h"
+#include "util.h"
 
 class MenuBar : public QMenuBar
 {
@@ -30,20 +29,26 @@ class MenuBar : public QMenuBar
 public:
     QMenu *fileMenu;
     QMenu *settingMenu;
+    QMenu *viewMenu;
     QMenu *searchMenu;
     QMenu *helpMenu;
 
-    MethodAction *newAction;
-    MethodAction *openAction;
-    MethodAction *closeAction;
-    MethodAction *saveAction;
-    MethodAction *saveAsAction;
+    intAction *newAction;
+    intAction *openAction;
+    QAction *closeAction;
+    intAction *saveAction;
+    intAction *saveAsAction;
 
-    MethodAction *filterAction;
+    intAction *filterAction;
 
-    MethodAction *settingsAction;
+    intAction *statisticsAction;
+    intAction *trafficAction;
+    intAction *byteAction;
 
-    MethodAction *searchAction;
+    intAction *settingsAction;
+
+    intAction *searchOnTabAction;
+    intAction *searchOnFilesAction;
 
     intAction *licenseAction;
     intAction *hintAction;
@@ -53,6 +58,12 @@ public:
     ~MenuBar();
 
 private:
+
+private slots:
+    void processCommand(CommandCode command) {emit sendCommand(command);}
+
+signals:
+    void sendCommand(CommandCode);
 
 };
 

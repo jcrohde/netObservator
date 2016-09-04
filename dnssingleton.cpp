@@ -15,12 +15,11 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#include "dnssingleton.h"
-#include <QDebug>
 #include <QFile>
 #include <ctime>
 #include <mutex>
 #include <functional>
+#include "dnssingleton.h"
 
 std::mutex myMutex;
 static const int MAXPACKETNUMBER = 100;

@@ -18,70 +18,89 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #ifndef MODEL_H
 #define MODEL_H
 
-#include <QXmlStreamReader>
-#include <QXmlStreamWriter>
-#include <QStandardItemModel>
-#include <memory>
-#include <QRegExp>
+
 #include <QFile>
-#include <QFileDialog>
-#include "xmlreader.h"
-#include "util.h"
+#include "sniffthread.h"
+#include "xmlserver.h"
+#include "view.h"
 
-class XmlFilter : private XmlReader {
+
+class ViewModel : public serverObserver {
 public:
-    bool generateFilteredXmlDocument(SearchCommand cmd,QString &input, QString &output);
+    ViewModel() {
+        statisticsAttached = false;
+    }
+
+    void update(const Settings &set);
+    void update(const serverState &state) {
+        view->update(state);
+        if (statisticsAttached)
+            statisticsView->update(state);
+    }
+
+    void set(DatabaseView *v);
+    void setStatistics(StatisticsView *sv) {statisticsView = sv;}
+
+    void attachStatistics(bool attached) {statisticsAttached = attached;}
+
 private:
-
-    std::unique_ptr<QXmlStreamWriter> writer;
-
-    SearchCommand command;
-
-    QList<QString> subNodes;
-
-    QRegExp regexp;
-
-    int columnCount;
-    bool found;
-
-    void readerAction(QString elementText);
-
-    void handleElementText(QString &elementText);
-    void closePacketInfo();
-    void writePacketInfo();
-    void reinitialize();
+    bool statisticsAttached;
+    ViewComposition composition;
+    Settings setting;
+    DatabaseView *view;
+    StatisticsView *statisticsView;
 };
 
-class XmlServer
-{
+class ServerModel : public SniffObserver {
 public:
-    XmlServer(XmlFilter *xmlFilter);
-    ~XmlServer();
+    ServerModel() {blockedBySniffThread = false;}
 
-    bool load(QString xmlContent, std::set<ipAddress> addr);
-    bool search(SearchCommand command);
-    void changeText(bool forward);
+    void set(XmlServer *s);
 
-    QString getContent() {return output[currentOutputIter];}
+    void registerObserver(serverObserver *observer) {observers.push_back(observer);}
+    void unregisterObserver(serverObserver *observer);
 
-    void clear();
+    bool search(SearchCommand &command);
+    bool changeText(bool forward);
 
-    void registerObserver(ModelObserver *observer) {observers.push_back(observer);}
-    void notifyObservers(bool force = false);
+    void clear(QString title = "New");
+    bool load(QString filename);
+    bool loadSlice(QString slicename);
+    bool save(QString fileName);
+
+    void update(const sniffState &state);
+
+    const QStringList &getSliceNames() {return server->getSliceNames();}
 
 private:
-    XmlFilter *filter;
+    XmlServer *server;
 
-    bool changed;
+    bool blockedBySniffThread;
+    std::vector<serverObserver*> observers;
 
-    std::vector<ModelObserver*> observers;
+    XmlFilter filter;
+    AddressExtractor extractor;
 
-    std::set<ipAddress> addresses;
+    void notifyObservers(bool force = false);
 
-    QList<QString> output;
-    int currentOutputIter;
+    void load(QString xmlContent, std::set<ipAddress> addr);
 
-    void setAsLastDocument(QString &document);
+    bool searchInFiles(SearchCommand &command);
+    bool getSearchResults(SearchCommand &command, QStringList &results);
+    void joinXml(QStringList &xmlData, QString &joined);
+    bool loadXml(QString &xmlContent);
+};
+
+class Model {
+public:
+    Model() {
+        server.registerObserver(&view);
+        sniff.registerObserver(&server);
+    }
+
+    ViewModel view;
+    ServerModel server;
+    SniffThread sniff;
 };
 
 #endif // MODEL_H

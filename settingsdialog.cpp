@@ -16,7 +16,6 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "settingsdialog.h"
-#include <QGridLayout>
 #include <QGroupBox>
 #include <QFrame>
 
@@ -30,9 +29,26 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     fileDialog = new QFileDialog();
 
     QVBoxLayout *ordering = new QVBoxLayout();
-    QVBoxLayout *optionLayout = new QVBoxLayout();
     QHBoxLayout *settingLayout = new QHBoxLayout();
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
+
+    generateSniffingSection(settingLayout);
+    generatePresentationSection(settingLayout);
+
+    ordering->addLayout(settingLayout);
+
+    generateButtonSection(ordering);
+
+    setLayout(ordering);
+
+    layout()->setSizeConstraint(QLayout::SetFixedSize);
+
+    setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+    connectSignalsAndSlots();
+}
+
+void SettingsDialog::generateSniffingSection(QHBoxLayout *settingLayout) {
+    QVBoxLayout *optionLayout = new QVBoxLayout();
 
     QGroupBox *optionFrame = new QGroupBox(this);
     optionFrame->setTitle("Sniffing");
@@ -62,10 +78,13 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     optionLayout->addWidget(new QLabel("Slice file name:"));
     QHBoxLayout *sliceNameLayout = new QHBoxLayout();
+
     sliceNameEdit = new QLineEdit();
     sliceNameEdit->insert("Slice");
+
     sliceNameBut = new QPushButton();
     sliceNameBut->setIcon(QIcon("icons/open.png"));
+
     sliceNameLayout->addWidget(sliceNameEdit);
     sliceNameLayout->addWidget(sliceNameBut);
     optionLayout->addLayout(sliceNameLayout);
@@ -73,6 +92,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     optionLayout->addStretch();
 
     optionLayout->addWidget(new QLabel("Packets per Slice:"));
+
     sliceSizeBox = new QSpinBox();
     sliceSizeBox->setRange(100,100000);
     sliceSizeBox->setValue(1000);
@@ -81,7 +101,9 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     optionFrame->setLayout(optionLayout);
 
     settingLayout->addWidget(optionFrame);
+}
 
+void SettingsDialog::generatePresentationSection(QHBoxLayout *settingLayout) {
     QGroupBox *infoFrame = new QGroupBox(this);
 
     infoFrame->setTitle("Presentation");
@@ -92,7 +114,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     for (int i = 0; i< COLUMNNUMBER; i++) {
         centralLayout->addWidget(&boxes[i],i,1,1,1);
-        boxes[i].setText("show " + LABEL[i]);
+        boxes[i].setText("show " + onLocalOrSrc(LABEL[i]));
         boxes[i].setChecked(setting.showInfo[i]);
     }
 
@@ -110,8 +132,10 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     infoFrame->setLayout(centralLayout);
 
     settingLayout->addWidget(infoFrame);
+}
 
-    ordering->addLayout(settingLayout);
+void SettingsDialog::generateButtonSection(QVBoxLayout *ordering) {
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
 
     buttonLayout->addStretch();
 
@@ -122,13 +146,9 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     buttonLayout->addWidget(cancelBut);
 
     ordering->addLayout(buttonLayout);
+}
 
-    setLayout(ordering);
-
-    layout()->setSizeConstraint(QLayout::SetFixedSize);
-
-    setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
-
+void SettingsDialog::connectSignalsAndSlots() {
     connect(durationSlider, SIGNAL(valueChanged(int)),durationSpinBox, SLOT(setValue(int)));
     connect(durationSpinBox, SIGNAL(valueChanged(int)),durationSlider, SLOT(setValue(int)));
     connect(allBox,SIGNAL(toggled(bool)),this,SLOT(selectAll(bool)));
@@ -170,9 +190,7 @@ void SettingsDialog::changeSettings() {
     setting.sliceFileName = sliceNameEdit->text();
     setting.sliceSize = sliceSizeBox->value();
 
-    for (auto observer: observers) {
-        observer->update(setting);
-    }
+    emit change(setting);
 
     close();
 }

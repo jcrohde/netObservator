@@ -21,7 +21,7 @@ Devices::Devices()
 {
     char error[PCAP_ERRBUF_SIZE];
     if(pcap_findalldevs(&alldevs,error)==-1) {
-        setErrorMessage("Error in find devices",QMessageBox::Critical);
+        setErrorMessage("Error in finding devices: " + QString(error),QMessageBox::Critical);
     }
 }
 

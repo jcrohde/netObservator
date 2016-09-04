@@ -15,18 +15,20 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#include "intaction.h"
+#ifndef MODELVIEW_H
+#define MODELVIEW_H
 
-intAction::intAction(CommandCode i, QString str, QObject *base): QAction(str,base), code(i)
-{
-    QObject::connect(this,SIGNAL(triggered()),this,SLOT(codeSignal()));
-}
+#include "model.h"
+#include "view.h"
 
-intAction::~intAction()
-{
+struct modelView {
+    XmlServer model;
+    DatabaseView view;
 
-}
+    modelView(ViewXmlReader *reader, XmlFilter *filter)
+        : view(reader), model(filter) {
+        view.getContent = [&](QString &str) {str = model.getContent();};
+    }
+};
 
-void intAction::codeSignal(){
-    emit sigCode(code);
-}
+#endif // MODELVIEW_H

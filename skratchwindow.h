@@ -19,88 +19,50 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #define MainWindow_H
 
 #include <QMainWindow>
-#include <QFileDialog>
-#include "view.h"
-#include "settingsdialog.h"
-#include "searchdialog.h"
-#include "packetfiltereditor.h"
 #include "menubar.h"
 #include "model.h"
-#include "sniffthread.h"
-#include "helpdialog.h"
 #include "displaytab.h"
 #include "controller.h"
 
-class MainWindow : public QMainWindow
+class MainWindow : public QMainWindow, public SniffObserver
 {
     Q_OBJECT
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow() {QString xmlContent; int i; std::set<ipAddress> addr; sniff->stop(xmlContent,i,addr); delete sniff; /*delete view;*/}
+    explicit MainWindow(Controller *c, Model *model, QWidget *parent = 0);
+    ~MainWindow() {}
 
+    void update(const sniffState &state);
 private:
     MenuBar *menuBar;
     QDialog *center;
 
-    SettingsDialog *settings;
-    SearchDialog *searchDialog;
-    PacketFilterEditor *filterEditor;
+    StringFactory factory;
     HelpDialog *help;
 
     DisplayTab *overView;
+    Controller *controller;
 
-    StringFactory factory;
-    Controller controller;
-
-    QString filter;
-
-    QLabel *sliceLabel;
+    /*QLabel *sliceLabel;
     QComboBox *sliceBox;
-    QPushButton *sliceButton;
+    QPushButton *sliceButton;*/
 
     QComboBox *devCombo;
-
-    QStandardItemModel *tableModel;
-    QTableView *display;
     QPushButton *runBut;
 
-    QList<QString> deviceList;
-
-    bool sniffThreadRunning;
-
-    Devices devs;
-    SniffThread *sniff;
-
-    void generateDialogs();
-    void generateCenter();
-    void registerObservers();
+    void generateCenter(Model *model);
+    void generateSniffThreadControll(QVBoxLayout *vert, Devices &devs);
+    //void generateSliceSection(QVBoxLayout *vert);
     void connectSignalsAndSlots();
-    void connectMethod(MethodAction *action, std::function<bool()> method);
 
-    void setSliceItemsVisible(bool visible);
-
-    bool isSniffingAllowed();
-    bool isSomeDialogOpened();
-    void executeMethod(std::function<bool()> func);
+    void updateSniffStart(const sniffState &state);
+    void updateSniffStop(const sniffState &state);
+    //void setSliceItemsVisible(bool visible);
 
 private slots:
-    void execute(methodWrapper func);
-
-    void getHelp(stringKey key);
-
-    void loadSlice();
-
-    void startSearch();
-    void changeText(bool forward);
-
+    void execute(CommandCode command);
+    void getHelp(CommandCode code);
+    //void loadSlice();
     void handleRunButton();
-
-    void getFilter(QString str) {filter = str;}
-
-    void loose(QString errorMsg);
-
-signals:
-    void failed(QString);
 };
 
 #endif // MainWindow_H

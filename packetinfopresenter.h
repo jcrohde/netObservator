@@ -20,7 +20,6 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QTableView>
 #include <QStandardItemModel>
-#include <QStandardItemModel>
 #include <QTextEdit>
 #include "util.h"
 
@@ -36,36 +35,42 @@ struct DisplayTableView {
     }
 };
 
-class PacketInfoPresenter : public SettingObserver
+class PacketInfoPresenter
 {
 public:
     PacketInfoPresenter() {;}
 
-    enum class colorCode {
-        INCOMINGSING = 0,
-        OUTGOINGSING = 1,
-        INCOMINGGROUP = 2,
-        OUTGOINGGROUP = 3,
-        INCOMINGOTHER = 4,
-        OUTGOINGOTHER = 5,
-    };
-
     DisplayTableView display;
 
-    void show(QString *content);
-    virtual void show(QString *content, colorCode direction) = 0;
-
+    void update(const Settings &set) {setting = set;}
+    virtual void show(QString *content) = 0;
     virtual void init() = 0;
 
-private:
-    colorCode determineDirection(QString *content);
+protected:
+    Settings setting;
 };
+
+/*--------------------------------------------------------------------------*/
 
 class TablePacketInfoPresenter : public PacketInfoPresenter
 {
 public:
+
+    enum class colorCode {
+        INCOMINGSING = 0,
+        OUTGOINGSING = 1,
+        THIRDPARTYSING = 2,
+        INCOMINGGROUP = 3,
+        OUTGOINGGROUP = 4,
+        THIRDPARTYGROUP = 5,
+        INCOMINGOTHER = 6,
+        OUTGOINGOTHER = 7,
+        THIRDPARTYOTHER = 8
+    };
+
     TablePacketInfoPresenter();
 
+    void show(QString *content);
     void show(QString *content, colorCode direction);
 
     void init();
@@ -75,43 +80,82 @@ private:
 
     QBrush inBrush;
     QBrush outBrush;
+    QBrush thirdBrush;
     QBrush inGroupBrush;
     QBrush outGroupBrush;
+    QBrush thirdGroupBrush;
     QBrush inOtherBrush;
     QBrush outOtherBrush;
+    QBrush thirdOtherBrush;
 
     QBrush *background;
 
     void showAttribute(int column, QString attribute);
+    colorCode determineDirection(QString *content);
+    void setBackGround(colorCode direction);
+    void evaluateTime(QString &time);
 };
 
-// will appear in a later release
-class TextPacketInfoPresenter : public PacketInfoPresenter {
+/*--------------------------------------------------------------------------*/
+
+struct sizedPair {
+    std::pair<QString, std::vector<long int> > value;
+
+    operator<(const sizedPair &pair) const {
+        if (value.second.size() < pair.value.second.size())
+            return true;
+        else if (value.second.size() == pair.value.second.size())
+            return value.first < pair.value.first;
+        else
+            return false;
+    }
+};
+
+class StatisticsPacketInfoPresenter : public PacketInfoPresenter
+{
 public:
-    TextPacketInfoPresenter();
+    StatisticsPacketInfoPresenter();
 
-    void show(QString *content, colorCode direction);
+    std::function<void(std::vector<sizedPair>&, long int, long int)> visualize;
 
-    QTextEdit *display;
+    void show(QString *content);
 
+    void init(column C);
     void init();
 
-    QString displayText;
+    void evaluate();
 
 private:
+    int totalNumber;
 
+    long int timeBegin, timeEnd;
 
+    column COLUMN;
+    std::map<QString,std::vector<long int> > appearance;
+};
 
-    QString inString;
-    QString outString;
-    QString inGroupString;
-    QString outGroupString;
-    QString inOtherString;
-    QString outOtherString;
+/*--------------------------------------------------------------------------*/
 
-    QString *background;
+class TrafficPacketInfoPresenter : public PacketInfoPresenter {
+public:
+    enum class infoType {
+        PACKETS,
+        BYTES
+    };
 
-    /*void showAttribute(int column, QString attribute);*/
+    TrafficPacketInfoPresenter(infoType type);
+
+    virtual void show(QString *content);
+    virtual void init();
+
+    std::function<void(int,long int)> evaluatePacketsOfSecond;
+
+    infoType getType() {return myType;}
+    void evaluateLastPackets();
+private:
+    infoType myType;
+    long int timeStamp, packetTimeStamp;
+    int packetNumber;
 };
 
 #endif // PACKETINFOPRESENTER_H

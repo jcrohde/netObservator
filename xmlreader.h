@@ -28,8 +28,6 @@ public:
     XmlReader();
     ~XmlReader();
 
-    QString getErrorMessage() {return errorMessage;}
-
     bool read(const QString &xmlContent);
 
 protected:
@@ -45,7 +43,7 @@ private:
     bool isPacketInfoSubnode(QStringRef str);
     void raiseError(QString wrong, QString correct);
     bool getErrorState();
-    void setErrorMessage();
+    void writeErrorMessage();
 };
 
 class AddressExtractor : private XmlReader {

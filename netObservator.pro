@@ -17,7 +17,6 @@ SOURCES += main.cpp \
     helpdialog.cpp \
     stringfactory.cpp \
     intaction.cpp \
-    methodaction.cpp \
     settingsdialog.cpp \
     xmlreader.cpp \
     searchdialog.cpp \
@@ -30,7 +29,11 @@ SOURCES += main.cpp \
     dnsthread.cpp \
     packetfiltereditor.cpp \
     displaytab.cpp \
-    controller.cpp
+    controller.cpp \
+    xmlserver.cpp \
+    searchstrategy.cpp \
+    viewdialog.cpp \
+    trafficdialog.cpp
 
 
 INCLUDEPATH += ../WpdPack/Include \
@@ -50,7 +53,6 @@ HEADERS += \
     helpdialog.h \
     stringfactory.h \
     intaction.h \
-    methodaction.h \
     settingsdialog.h \
     xmlreader.h \
     searchdialog.h \
@@ -63,4 +65,9 @@ HEADERS += \
     dnsthread.h \
     packetfiltereditor.h \
     displaytab.h \
-    controller.h
+    controller.h \
+    modelview.h \
+    xmlserver.h \
+    searchstrategy.h \
+    viewdialog.h \
+    trafficdialog.h

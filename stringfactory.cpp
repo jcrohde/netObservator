@@ -77,7 +77,7 @@ QString StringFactory::getProgramNameLong() {
 }
 
 QString StringFactory::getVersion() {
-    return "1.3";
+    return "1.4";
 }
 
 QString StringFactory::getTitle() {
@@ -89,23 +89,24 @@ QString StringFactory::getTitle() {
 
 QString StringFactory::getHelp() {
     QString content = getTitle();
-    content += getProgramName() + " is a simple to use sniffer app. The goal is to give you information about the connections of your computer.<br><br>";
+    content += getProgramName() + " is a simple to use sniffer app. The goal is to give you an overview about the connections of your computer.<br><br>";
 
-    content += "When you start " + getProgramName() +  ", only information about the first packet of a connection with another host will be displayed. ";
-    content += "This information will disappear some time after the last packet from or to this host has been sniffed. This will give you an overview of the hosts you are currently connected with.<br><br>";
+    content += "When you start to sniff with " + getProgramName() +  ", only information about the first packet of a connection with another host will be displayed. ";
+    content += "This information will disappear some time after the last packet from or to this host has been sniffed. Thus you see the hosts you are currently connected with.<br><br>";
 
     content += "In the settings you can select the information you like to be displayed. Also you can change the way the information is displayed. If you have selected \"save\" in the settings, ";
-    content += "information about all packets will be stored in XML files. These slices can be displayed after sniffing.";
+    content += "information about all sniffed packets will be stored in XML files. These slices can be displayed after sniffing.";
 
     content += "<h2>Quick Start</h2>";
     content += "For a quick start just select the device of your internet connection and click the \"Run\"-button. Then the program starts to sniff. ";
     content += "If you press this button a second time, the program will stop to sniff.<br><br>";
 
-    content += "If you have selected \"save\" in settings a combo Box and a button will appear to support you to select and to display the slices of the recently sniffed packets. The information about the sniffed packets are divided ";
-    content += " into different files. The reason is that pedending on your traffic and the memory of your system " + getProgramName() + " might get problems to allocate enough memory process files containing all information.<br><br>";
+    content += "The information about the sniffed packets are divided into different files (slices). The reason is that depending on your traffic and the memory of your system " + getProgramName();
+    content += " might get problems to allocate enough memory to process files containing all information. If you have selected \"save\" in settings a combo Box will appear to support you to select and to display the slices of the recently sniffed packets.<br><br>";
 
     content += "Green background color means that the packet is incoming. ";
-    content += "Red means just that the packet is outgoing, which is not necessarily dangerous. The saturation depends on the protocol: low (TCP, UDP), middle(IGMP, ICMP), high(other)";
+    content += "Red means just that the packet is outgoing, which is not necessarily dangerous. Blue means that the device you are sniffing on is neither the source nor the destination of the sniffed packet. ";
+    content += "The saturation depends on the protocol: low (TCP, UDP), middle(IGMP, ICMP), high(other)";
 
     content += "<h2>File Menu</h2>";
     content += "By clicking on \"Save\" or \"SaveAs\" in the File menu, you can save the displayed information in an XML table. \"New\" cleans the displayed information. ";
@@ -117,6 +118,12 @@ QString StringFactory::getHelp() {
     content += "However you can insert an arbitrary filtering expression for winpcap in the text editor by hand. You might look in the online documentation of winpcap for the filter syntax. By clicking on \"Test\", ";
     content += "you can test the filter inserted in the text editor. By clicking on \"Ok\", the filtering expression you see in your text editor will be used for sniffing, until it will be changed by you.";
 
+    content += "<h2>View Menu</h2>";
+
+    content += "The Statistics dialog orders the selected information by its incidence. Moreover it visualizes the incidence of the selected information on the time line. The Packet and Byte View plot the numbers of sniffed packets and bytes respectively. ";
+    content += "If you call an arbitrary View dialog directly after sniffing, it displays information about all recently sniffed packets. ";
+    content += "Otherwise it enlists information for the file displayed in the currently selected tab. During Sniffing the Packet and the Byte View show the current traffic. The Statistics Dialog must be closed during sniffing.";
+
     content += "<h2>Settings</h2>";
 
     content += "The duration of the time packet information is shown during sniffing can be selected in the settings under \"duration\". If you have selected \"save\", ";
@@ -125,11 +132,12 @@ QString StringFactory::getHelp() {
     content += "The following information about a packet can be displayed:<dl>";
     content += "<dt>"+LABEL[TIME] + "</dt><dd>The timestamp of a packet.</dd>";
     content += "<dt>" + LABEL[PROTOCOL] + "</dt><dd>The name of the protocol is displayed in the case of TCP, UDP, IGMP, ICMP. Otherwise you get the protocol number.</dd>";
-    content += "<dt>" + LABEL[HOSTPORT] + "</dt><dd>The port of the computer you a connected with.</dd>";
-    content += "<dt>" + LABEL[HOSTADDRESS] + "</dt><dd>The IP address of the computer you a connected with.</dd>";
+    content += "<dt>" + LABEL[HOSTPORT] + "</dt><dd>The port of the computer you are connected with.</dd>";
+    content += "<dt>" + LABEL[HOSTADDRESS] + "</dt><dd>The IP address of the computer you a connected with or the address of the destination, if your device is neither the source nor the destination of the packet.</dd>";
     content += "<dt>" + LABEL[HOSTNAME] + "</dt><dd>The Hostname of the computer you a connected with, when " + getProgramName() + " gets it. This may fail sometimes. In this case the ip number is displayed.</dd>";
-    content += "<dt>" + LABEL[DIRECTION] + "</dt><dd>Whether the packet is incoming (\"in\") or outcoming (\"out\").</dd>";
-    content += "<dt>" + LABEL[LOCALPORT] + "</dt><dd>The port of your own computer.</dd>";
+    content += "<dt>" + LABEL[DIRECTION] + "</dt><dd>Whether the packet is incoming (\"in\") or outgoing (\"out\") or it is from source to host, if your device is neither the source nor the destination of the packet.</dd>";
+    content += "<dt>" + onLocalOrSrc(LABEL[LOCALSRCPORT]) + "</dt><dd>The port of your selected device or the port of the source, if your device is neither the source nor the destination of the packet.</dd>";
+    content += "<dt>" + onLocalOrSrc(LABEL[LOCALSRCADDRESS]) + "</dt><dd>The IP address of your selected device or the address of the source, if your device is neither the source nor the destination of the packet.</dd>";
     content += "<dt>" + LABEL[ENTIRE_PACKET] + "</dt><dd>The bytes of the packet are represented by integers from 0 to 255.</dd>";
     content += "<dt>" + LABEL[PAYLOAD] + "</dt><dd>The bytes of the packet are interpreted as characters.</dd>";
     content += "</dl>";
@@ -138,13 +146,12 @@ QString StringFactory::getHelp() {
 
     content += "Insert a text and select a column, in which this text should occur. If you like to have an invert match check \"invert match\". Then click on the\"Find\"-button. ";
     content += "Only Information about the packets satisfying your condition will remain. You can also select \"regular expressions\" and search for entries containing your ";
-    content += "inserted regular expression. By clicking at the arrow buttons, you can browse \"&lt;-\" backward and \"-&gt;\" forward ";
-    content += "through the history of your searches, if you have selected search in the current tab. You can also select search in files. Then you may search in (different) ";
-    content += "files you have generated with netObservator.";
-
+    content += "inserted regular expression. There are two Search Dialogs: One for searching on the current tab and one to search in files. With the second one you may search in (different) ";
+    content += "files you have generated with netObservator. ";
+    content += "By clicking at the arrow buttons on the Search on Tab Dialog, you can browse \"&lt;-\" backward and \"-&gt;\" forward through the history of your searches on the current tab.";
 
     content += "<h2>Libraries</h2>";
-    content += getProgramName() + " uses WinPcap, which is a common programm for network sniffing. For the GUI, regular expressions, XML-reading and XML-writing Qt 5.2.0 is used.";
+    content += getProgramName() + " uses WinPcap, which is a common program for network sniffing. For the GUI, regular expressions, XML-reading and XML-writing Qt 5.7.0 is used.";
 
     return content;
 }

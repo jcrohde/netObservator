@@ -21,29 +21,21 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QDialog>
 #include <QCheckBox>
 #include <QLabel>
+#include <QLineEdit>
 #include <QSlider>
 #include <QSpinBox>
 #include <QPushButton>
 #include <QFileDialog>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include "util.h"
 #include "stringfactory.h"
-#include "packetfiltereditor.h"
 
 class SettingsDialog : public QDialog
 {
     Q_OBJECT
 public:
     explicit SettingsDialog(QWidget *parent = 0);
-
-    void registerObserver(SettingObserver *observer) {
-        observers.push_back(observer);
-    }
-
-    void unregisterObserver(SettingObserver *observer) {
-        std::vector<SettingObserver*>::iterator pos = std::find(observers.begin(),observers.end(),observer);
-        if (pos != observers.end())
-            observers.erase(pos);
-    }
 
 private:
     QSpinBox *durationSpinBox;
@@ -61,13 +53,19 @@ private:
 
     Settings setting;
 
-    std::vector<SettingObserver*> observers;
+    void generateSniffingSection(QHBoxLayout *settingLayout);
+    void generatePresentationSection(QHBoxLayout *settingLayout);
+    void generateButtonSection(QVBoxLayout *ordering);
+    void connectSignalsAndSlots();
 
 private slots:
     void selectSliceFileName();
     void activateSlices(bool selection);
     void selectAll(bool selection);
     void changeSettings();
+
+signals:
+    void change(Settings&);
 };
 
 #endif // SETTINGSDIALOG_H

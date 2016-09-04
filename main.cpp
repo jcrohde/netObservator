@@ -24,7 +24,12 @@ int main(int argc, char* argv[])
     DNSsingleton::getInstance();
 
     QApplication app(argc, argv);
-    MainWindow window;
+    Model model;
+
+    Controller controll(&model);
+    MainWindow window(&controll,&model);
+    model.sniff.registerObserver(&window);
+
     window.show();
     return app.exec();
 }

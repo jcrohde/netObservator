@@ -24,8 +24,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QMessageBox>
 #include <memory>
 #include <functional>
-#include <qDebug>
 #include <set>
+#include <mutex>
 
 typedef struct ipAddress{
     u_char byte1;
@@ -66,19 +66,29 @@ enum column {
     HOSTADDRESS = 3,
     HOSTNAME = 4,
     DIRECTION = 5,
-    LOCALPORT = 6,
-    ENTIRE_PACKET = 7,
-    PAYLOAD = 8
+    LOCALSRCPORT = 6,
+    LOCALSRCADDRESS = 7,
+    ENTIRE_PACKET = 8,
+    PAYLOAD = 9
 };
 
 const unsigned int SECONDSPERDAY = 86400;
 
-const int COLUMNNUMBER = 9;
+const int COLUMNNUMBER = 10;
 
-const QString LABEL[COLUMNNUMBER] = {"Time","Protocol","HostPort","HostAddress","HostName","Direction","LocalPort","Packet","Content"};
+const QString LABEL[COLUMNNUMBER] = {"Time","Protocol","HostPort","HostAddress","HostName","Direction","LocalSRCPort","LocalSRCAddress","Packet","Content"};
 
 const QString SNIFFED = "sniffed";
 const QString PACKETINFO = "packetInfo";
+
+struct ViewComposition {
+    enum class presentation {
+        TABLE,
+        TEXT
+    };
+
+    presentation mode;
+};
 
 struct Settings {
     bool showInfo[COLUMNNUMBER];
@@ -93,25 +103,35 @@ struct Settings {
 
 const QString ARBITRARY = "Arbitrary";
 
-class SettingObserver {
-public:
-    virtual void update(const Settings &set) {setting = set;}
-protected:
-    Settings setting;
-};
-
-struct modelState{
-    QString document;
+struct serverState{
     std::set<ipAddress> addresses;
     bool firstDocument;
+    QStringList sliceNames;
     bool lastDocument;
+    bool blockedBySniffThread;
+    QString title;
 };
 
-class ModelObserver {
+class serverObserver {
 public:
-    virtual void update(modelState state) {storedState = state;}
+    virtual void update(const serverState &state) {storedState = state;}
 private:
-    modelState storedState;
+    serverState storedState;
+};
+
+struct sniffState {
+    std::set<ipAddress> addresses;
+    QStringList sliceNames;
+    QString errorMessage;
+    bool sniffing;
+    bool valid;
+};
+
+class SniffObserver {
+public:
+    virtual void update(const sniffState &state) {storedState = state;}
+private:
+    sniffState storedState;
 };
 
 struct SearchCommand {
@@ -177,7 +197,48 @@ public:
 };
 }
 
+enum class CommandCode {
+    CLEAR,
+    LOAD,
+    LOADFILE,
+    SAVEFILEAS,
+    SAVEFILE,
 
+    LOADSLICE,
+
+    SHOWPACKETFILTEREDITOR,
+
+    SHOWSTATISTICSDIALOG,
+    SHOWTRAFFICDIALOG,
+    SHOWBYTEDIALOG,
+
+    SHOWSETTINGSDIALOG,
+
+    SHOWSEARCHTABDIALOG,
+    SHOWSEARCHFILEDIALOG,
+
+    SNIFF,
+
+    HELP,
+    LICENSE,
+    ABOUT
+};
+
+struct Command {
+    CommandCode code;
+    QStringList arguments;
+};
+
+struct traffic {
+    int packetNumber;
+    long int seconds;
+};
+
+Q_DECLARE_METATYPE(traffic)
+
+extern std::mutex myCellMutex;
+
+extern QString onLocalOrSrc(QString str);
 extern QString escape(QString content);
 extern QString unEscape(QString content);
 

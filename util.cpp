@@ -62,6 +62,17 @@ QString ipAddress::toQString() const {
     return res;
 }
 
+std::mutex myCellMutex;
+
+QString onLocalOrSrc(QString str) {
+    if (str == LABEL[LOCALSRCADDRESS])
+        return "Local or SRC Address";
+    else if (str == LABEL[LOCALSRCPORT])
+        return "Local or SRC Port";
+    else
+        return str;
+}
+
 QString escape(QString content) {
     content.replace(QString("<"),QString("&lt;"));
     content.replace(QString(">"),QString("&gt;"));

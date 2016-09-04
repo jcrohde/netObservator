@@ -26,34 +26,40 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QStandardItemModel>
 #include <QTableView>
 #include <QFileDialog>
+#include <QHBoxLayout>
+#include "searchstrategy.h"
 #include "util.h"
 
-class SearchDialog : public QDialog, public SettingObserver, public ModelObserver
+
+class SearchDialog : public QDialog/*, public serverObserver, public SniffObserver*/
 {
     Q_OBJECT
 public:
-    explicit SearchDialog(QWidget *parent = 0);
+    explicit SearchDialog(SearchStrategy *strtgy, QWidget *parent = 0);
+
+    void update(const Settings &set) {setting = set;}
+
+    SearchStrategy *strategy;
+
+    QStandardItemModel *tableModel;
+
+private:
+    QComboBox *columnBox, *modeBox;
+    QPushButton *findBut;
+    QLineEdit *findEdit;
+    QCheckBox *invertBox;
+    QPushButton *closeBut, *fileBut;
+
+    QTableView *display;
+
+    int addressIndex, nameIndex;
+
+    Settings setting;
 
     void setCommand(SearchCommand &command);
 
-    void setFilesForSearch(QStringList filenames);
-    void setTabToSearch();
+    void updateTableModel(const std::set<ipAddress> &addresses);
 
-    void update(modelState state);
-
-private:
-    QComboBox *columnBox, *modeBox, *optionBox;
-    QPushButton *findBut;
-    QLineEdit *findEdit, *fileEdit;
-    QCheckBox *invertBox;
-    QPushButton *backBut, *forwardBut, *closeBut, *fileBut;
-    QStandardItemModel *tableModel;
-    QTableView *display;
-    QFileDialog *fileDialog;
-    int addressIndex, nameIndex;
-
-    void enableBackForwardButtons(bool backEnable, bool forwardEnable);
-    void updateTableModel(std::set<ipAddress> &addresses);
     void enlistColumnBox();
 
 protected:
@@ -64,16 +70,11 @@ protected:
     }
 
 private slots:
-    void enableFileSearch(int file);
     void change();
-    void back();
-    void forward();
     void setHost(const QModelIndex &index);
-    void selectFiles();
 
 signals:
-    void browse(bool);
-    void sig();
+    void sig(SearchCommand &command);
 };
 
 #endif // SEARCHDIALOG_H

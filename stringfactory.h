@@ -19,6 +19,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #define STRINGFACTORY_H
 
 #include <QString>
+#include "util.h"
 
 enum class stringKey {
     PROGRAMNAME,

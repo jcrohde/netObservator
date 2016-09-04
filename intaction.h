@@ -20,24 +20,24 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QAction>
 
-enum class stringKey;
+enum class CommandCode;
 
 class intAction : public QAction
 {
     Q_OBJECT
 
 private:
-    stringKey code;
+    CommandCode code;
 
 public:
-    explicit intAction(stringKey i, QString str, QObject *base);
+    explicit intAction(CommandCode i, QString str, QObject *base);
     ~intAction();
 
 private slots:
     void codeSignal();
 
 signals:
-    void sigCode(stringKey);
+    void sigCode(CommandCode);
 };
 
 #endif // INTACTION_H

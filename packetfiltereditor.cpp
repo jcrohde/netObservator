@@ -21,7 +21,6 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QList>
 #include <QGridLayout>
 #include "dnssingleton.h"
-#include <QDebug>
 #include <QMenu>
 
 static const int minButtomButtonHeight = 24;
@@ -292,7 +291,7 @@ void PacketFilterEditor::test() {
 
     pcap_if_t *alldevs;
     if(pcap_findalldevs(&alldevs,error)==-1) {
-        setErrorMessage("Error in find devices",QMessageBox::Critical);
+        setErrorMessage("Error in finding devices: " + QString(error),QMessageBox::Critical);
     }
 
     pcap_t *tester = pcap_open_dead(1,BUFSIZ);

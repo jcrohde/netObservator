@@ -1,153 +1,179 @@
+/*
+Copyright (C) 2015-2016 Jan Christian Rohde
+
+This file is part of netObservator.
+
+netObservator is free software; you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation; either version 3
+of the License, or (at your option) any later version.
+
+netObservator is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with netObservator; if not, see http://www.gnu.org/licenses.
+*/
+
 #include "controller.h"
 
 
-Controller::Controller()
+Controller::Controller(Model *m)
+    : model(m),
+      packetTrafficView(TrafficPacketInfoPresenter::infoType::PACKETS),
+      byteTrafficView(TrafficPacketInfoPresenter::infoType::BYTES)
 {
+    settings = new SettingsDialog;
+    statisticsDialog = new StatisticsDialog(&statisticsView);
+    packetTrafficDialog = new TrafficDialog(&packetTrafficView);
+    byteTrafficDialog = new TrafficDialog(&byteTrafficView);
+    searchTabDialog = new SearchDialog(&tabStrategy);
+    searchFilesDialog = new SearchDialog(&filesStrategy);
+    filterEditor = new PacketFilterEditor;
 
+    model->view.setStatistics(&statisticsView);
+
+    model->server.registerObserver(&tabStrategy);
+    model->sniff.registerObserver(&filesStrategy);
+    model->sniff.registerObserver(packetTrafficDialog);
+    model->sniff.registerObserver(byteTrafficDialog);
+
+    QObject::connect(searchTabDialog,SIGNAL(sig(SearchCommand&)),this,SLOT(search(SearchCommand&)));
+    QObject::connect(&tabStrategy,SIGNAL(browse(bool)),this,SLOT(changeText(bool)));
+    QObject::connect(searchFilesDialog,SIGNAL(sig(SearchCommand&)),this,SLOT(search(SearchCommand&)));
+    QObject::connect(settings,SIGNAL(change(Settings&)),this,SLOT(getSettings(Settings&)));
+    QObject::connect(filterEditor,SIGNAL(commit(QString)),this,SLOT(getFilter(QString)));
+
+    QObject::connect(statisticsDialog,SIGNAL(closeSignal()),this,SLOT(removeStatisticsView()));
+    QObject::connect(packetTrafficDialog,SIGNAL(closeSignal()),this,SLOT(removePacketView()));
+    QObject::connect(byteTrafficDialog,SIGNAL(closeSignal()),this,SLOT(removeByteView()));
+
+    QObject::connect(this,SIGNAL(packets(int)),packetTrafficDialog,SLOT(getForPlot(int)));
+    QObject::connect(this,SIGNAL(bytes(int)),byteTrafficDialog,SLOT(getForPlot(int)));
+
+
+    model->sniff.firePacketNumber = [&](traffic &data) {emit packets(data.packetNumber);};
+    model->sniff.fireByteNumber = [&](traffic &data) {emit bytes(data.packetNumber);};
 }
 
-bool Controller::search(SearchCommand &command) {
-    if (command.inFiles) {
-        searchInFiles(command);
-        setTabTitle("searched in files",false);
+void Controller::setModelView(modelView *mv) {
+    model->view.set(&mv->view);
+    statisticsView.getContent = mv->view.getContent;
+    packetTrafficView.getContent = mv->view.getContent;
+    byteTrafficView.getContent = mv->view.getContent;
+    model->server.set(&mv->model);
+    model->sniff.setPacketInfoPresenter(&mv->view.tablePacketInfo);
+}
+
+bool Controller::isSomeDialogOpened() {
+    return fileDialog.isVisible()
+        || (searchTabDialog && searchTabDialog->isVisible())
+        || (searchFilesDialog && searchFilesDialog->isVisible())
+        || (settings && settings->isVisible())
+        || (filterEditor && filterEditor->isVisible())
+        || (statisticsDialog && statisticsDialog->isVisible());
+}
+
+void Controller::executeCommand(Command cmd) {
+    CommandCode command = cmd.code;
+
+    if (command == CommandCode::LOAD)
+        load();
+    if (command == CommandCode::LOADFILE)
+        model->server.load(cmd.arguments[0]);
+    else if (command == CommandCode::CLEAR)
+        model->server.clear();
+    else if (command == CommandCode::SAVEFILE)
+        saveFile();
+    else if (command == CommandCode::SAVEFILEAS)
+        saveFileAs();
+    else if (command == CommandCode::SHOWPACKETFILTEREDITOR)
+        filterEditor->show();
+    else if (command == CommandCode::SHOWSEARCHTABDIALOG)
+        searchTabDialog->show();
+    else if (command == CommandCode::SHOWSEARCHFILEDIALOG)
+        searchFilesDialog->show();
+    else if (command == CommandCode::SHOWSETTINGSDIALOG)
+        settings->show();
+    else if (command == CommandCode::SHOWSTATISTICSDIALOG) {
+        model->view.attachStatistics(true);
+        statisticsView.setSliceNames(model->server.getSliceNames());
+        statisticsDialog->show();
     }
-    else {
-        model->search(command);
-        setTabTitle("->search",true);
+    else if (command == CommandCode::LOADSLICE)
+        model->server.loadSlice(cmd.arguments[0]);
+    else if (command == CommandCode::SHOWTRAFFICDIALOG) {
+        model->server.registerObserver(&packetTrafficView);
+        packetTrafficView.setSliceNames(model->server.getSliceNames());
+        packetTrafficDialog->show();
     }
-    model->notifyObservers();
-    return true;
+    else if (command == CommandCode::SHOWBYTEDIALOG) {
+        model->server.registerObserver(&byteTrafficView);
+        byteTrafficView.setSliceNames(model->server.getSliceNames());
+        byteTrafficDialog->show();
+    }
+    else if (command == CommandCode::SNIFF)
+        handleSniffing(cmd);
 }
 
-bool Controller::changeText(bool forward) {
-    model->changeText(forward);
-    if (forward)
-        setTabTitle("->search",true);
-    else
-        setTabTitle(getTabTitle().left(getTabTitle().lastIndexOf("->search")),false);
-    model->notifyObservers();
-    return true;
-}
-
-bool Controller::load(QString xmlContent, std::set<ipAddress> addr) {
-    bool valid = true;
-    valid = valid && model->load(xmlContent,addr);
-    if (valid) model->notifyObservers();
-    return valid;
-}
-
-void Controller::clear() {
-    model->clear();
-    model->notifyObservers();
-}
-
-bool Controller::load() {
+void Controller::load() {
     QString filename = fileDialog.getOpenFileName(
         NULL,
         QObject::tr("Open Document"),
         QDir::currentPath(),
         QObject::tr("XML (*.xml)") );
 
-    return loadFile(filename);
+    model->server.load(filename);
 }
 
-bool Controller::loadFile(QString filename) {
-    bool valid = true;
-
-    QFile file(filename);
-    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-        QString content = QString::fromUtf8(file.readAll());
-        if (loadXml(content)) {
-            setTabTitle(filename,false);
-            model->notifyObservers();
-        }
-        else
-            valid = false;
-        file.close();
-    }
-    else valid = (filename.size() == 0);
-
-    return valid;
+void Controller::saveFile() {
+    if (lastSavedFileName.size() > 0)
+        model->server.save(lastSavedFileName);
+    else
+        saveFileAs();
 }
 
-bool Controller::saveFileAs() {
-    fileName = fileDialog.getSaveFileName(NULL,QObject::tr("Save"),"Capture",QObject::tr("XML (*.xml)"));
-    if(fileName == "") return true;
-    else return save();
-}
-
-bool Controller::saveFile() {
-    if (fileName == "") return saveFileAs();
-    else return save();
-}
-
-bool Controller::save() {
-    QFile file(fileName);
-
-    QString content = model->getContent();
-    if (content.size() == 0) {
-        setErrorMessage(QString("No sniffed information to save."),QMessageBox::Critical);
-        return true;
-    }
-
-    if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
-        file.write(content.toUtf8());
-        file.close();
-        return true;
-    }
-
-    return false;
-}
-
-bool Controller::searchInFiles(SearchCommand &command) {
-    QString finalResult;
-    QStringList results;
-    bool valid = true;
-
-    valid = valid && getSearchResults(command,results);
-    if (valid) joinXml(results, finalResult);
-    return valid && loadXml(finalResult);
-}
-
-bool Controller::getSearchResults(SearchCommand &command, QStringList &results) {
-    results.clear();
-    bool valid = true;
-
-    for (int i = 0; i < command.filenames.size() && valid; i++) {
-        QFile file(command.filenames.at(i));
-        if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-            QString content = QString::fromUtf8(file.readAll());
-            QString result;
-            valid = valid && filter.generateFilteredXmlDocument(command,content,result);
-            if (valid) results.append(result);
-            file.close();
-        }
-        else
-            valid = false;
-    }
-    return valid;
-}
-
-void Controller::joinXml(QStringList &xmlData, QString &joined) {
-    int index;
-    joined.clear();
-    for (int i = 0; i < xmlData.size(); i++) {
-        i > 0 ? index = joined.lastIndexOf("</" + SNIFFED + ">") : index = -1;
-        if (index > 0) {
-            int index2 = xmlData.at(i).indexOf("<" + SNIFFED + ">");
-            if (index2 > 0) {
-                joined = joined.left(index);
-                joined.append(xmlData.at(i).right(xmlData.at(i).size()-xmlData.at(i).indexOf("<" + SNIFFED + ">")-SNIFFED.size()-2));
-            }
-        }
-        else joined = xmlData.at(i);
+void Controller::saveFileAs() {
+    QString fileName = fileDialog.getSaveFileName(NULL,QObject::tr("Save"),"Capture",QObject::tr("XML (*.xml)"));
+    if(fileName.size() > 0) {
+        model->server.save(fileName);
+        lastSavedFileName = fileName;
     }
 }
 
-bool Controller::loadXml(QString &xmlContent) {
-    std::set<ipAddress> addr;
-    bool valid = true;
+void Controller::handleSniffing(Command cmd) {
+    if (model->sniff.isSniffing())
+        model->sniff.stop();
+    else
+        model->sniff.start(cmd.arguments[0].toInt());
+}
 
-    valid = valid && extractor.extract(xmlContent,addr);
-    return valid && model->load(xmlContent,addr);
+void Controller::getCommand(Command command) {
+    if (command.code != CommandCode::SNIFF && model->sniff.isSniffing()) {
+        setErrorMessage(QString("The selected action cannot be performed while the program is sniffing."),QMessageBox::Warning);
+    }
+    else if (isSomeDialogOpened()) {
+        setErrorMessage(QString("The selected action cannot be performed while some other sub dialog is opened."),QMessageBox::Warning);
+    }
+    else
+        executeCommand(command);
+}
+
+void Controller::getComposition(ViewComposition &composition) {
+
+}
+
+void Controller::search(SearchCommand &command) {
+    model->server.search(command);
+}
+
+void Controller::changeText(bool forward) {
+    model->server.changeText(forward);
+}
+
+void Controller::getSettings(Settings &set) {
+    model->view.update(set);
+    model->sniff.update(set);
+    searchTabDialog->update(set);
+    searchFilesDialog->update(set);
 }

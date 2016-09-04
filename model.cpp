@@ -19,135 +19,202 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "model.h"
 #include <QBuffer>
 
-bool XmlFilter::generateFilteredXmlDocument(SearchCommand cmd,QString &input, QString &output) {
-    writer.reset(new QXmlStreamWriter(&output));
-
-    command = cmd;
-    regexp = QRegExp(command.searchString);
-
-    reinitialize();
-
-    writer->writeStartDocument();
-    writer->writeStartElement(SNIFFED);
-    bool valid = read(input);
-    writer->writeEndElement();
-
-    return valid;
+void ViewModel::update(const Settings &set) {
+    setting = set;
+    view->update(set);
 }
 
-void XmlFilter::readerAction(QString elementText) {
-    handleElementText(elementText);
-    columnCount++;
-    if (columnCount == COLUMNNUMBER) {
-        closePacketInfo();
-    }
+void ViewModel::set(DatabaseView *v) {
+    view = v;
+    view->getSettings(setting);
 }
 
-void XmlFilter::handleElementText(QString &elementText) {
-    subNodes.append(elementText);
-    if ((command.settings.showInfo[columnCount])
-      && (command.columnName == ARBITRARY || LABEL[columnCount] == command.columnName)) {
-        if (command.mode == command.REGEX)
-            found = found || regexp.indexIn(elementText) != -1;
-        else if (command.mode == command.CASEINSENSITIVE)
-            found = found || elementText.contains(command.searchString,Qt::CaseInsensitive);
-        else
-            found = found || elementText.contains(command.searchString);
-    }
+void ServerModel::set(XmlServer *s) {
+    server = s;
+    notifyObservers(true);
 }
 
-void XmlFilter::closePacketInfo() {
-    if (command.invertMatch)
-        found = !found;
-    if (found) {
-        writePacketInfo();
-    }
-    reinitialize();
+void ServerModel::unregisterObserver(serverObserver *observer) {
+    std::vector<serverObserver*>::iterator pos = std::find(observers.begin(),observers.end(),observer);
+    if (pos != observers.end())
+        observers.erase(pos);
 }
 
-void XmlFilter::writePacketInfo() {
-    writer->writeStartElement(PACKETINFO);
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        writer->writeTextElement(LABEL[i],subNodes[i]);
-    }
-    writer->writeEndElement();
-}
-
-void XmlFilter::reinitialize() {
-    found = false;
-    columnCount = 0;
-    subNodes.clear();
-}
-
-XmlServer::XmlServer(XmlFilter *xmlFilter) : filter(xmlFilter) {
-    changed = false;
-    clear();
-}
-
-XmlServer::~XmlServer() {
-
-}
-
-bool XmlServer::load(QString xmlContent, std::set<ipAddress> addr) {
-    clear();
-    if (xmlContent.size() > 0)
-        output[0] = xmlContent;
-    addresses = addr;
-    changed = true;
-
-    return true;
-}
-
-bool XmlServer::search(SearchCommand cmd) {
-    QString result;
-
-    bool valid = filter->generateFilteredXmlDocument(cmd,output[currentOutputIter],result);
-
-    if (valid) {
-        setAsLastDocument(result);
-        changed = true;
-    }
-
-    return valid;
-}
-
-void XmlServer::changeText(bool forward) {
-    if (forward)
-        currentOutputIter++;
-    else
-        currentOutputIter--;
-    changed = true;
-}
-
-void XmlServer::notifyObservers(bool force) {
-    if (changed || force) {
-        modelState state;
-        state.document = output[currentOutputIter];
-        state.firstDocument = currentOutputIter == 0;
-        state.lastDocument = (currentOutputIter == output.size()-1);
-        state.addresses = addresses;
+void ServerModel::notifyObservers(bool force) {
+    if (server->change() || force) {
+        serverState state;
+        state.blockedBySniffThread = blockedBySniffThread;
+        server->getState(state);
 
         for (auto observer: observers) {
             observer->update(state);
         }
-
-        changed = false;
     }
 }
 
-void XmlServer::clear() {
-    output.clear();
-    currentOutputIter = 0;
-    output.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><"+SNIFFED+"></"+SNIFFED+">");
-    changed = true;
+bool ServerModel::search(SearchCommand &command) {
+    if (command.inFiles) {
+        searchInFiles(command);
+        server->setTitle("searched in files");
+    }
+    else {
+        server->search(command);
+    }
+    notifyObservers();
+    return true;
 }
 
-void XmlServer::setAsLastDocument(QString &document) {
-    currentOutputIter++;
-
-    while (output.size() > currentOutputIter)
-        output.removeLast();
-
-    output.append(document);
+bool ServerModel::changeText(bool forward) {
+    server->changeText(forward);
+    notifyObservers();
+    return true;
 }
+
+void ServerModel::load(QString xmlContent, std::set<ipAddress> addr) {
+    server->clear();
+    server->load(xmlContent,addr);
+    notifyObservers();
+}
+
+void ServerModel::clear(QString title) {
+    server->clear();
+    server->setTitle(title);
+    notifyObservers();
+}
+
+void ServerModel::update(const sniffState &state) {
+    if (state.valid && state.sniffing) {
+        blockedBySniffThread = true;
+        clear("Sniffing");
+    }
+    else if (!state.sniffing) {
+        server->clear();
+        server->setSniffed(state.sliceNames);
+        server->setTitle("Sniffed");
+        blockedBySniffThread = false;
+        if (state.sliceNames.size() > 0)
+            loadSlice(state.sliceNames[0]);
+        else
+            clear("Sniffed");
+    }
+}
+
+bool ServerModel::load(QString filename) {
+    bool valid = true;
+
+    QFile file(filename);
+    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
+        QString content = QString::fromUtf8(file.readAll());
+        server->clear();
+        if (loadXml(content)) {
+            server->setTitle(filename);
+            notifyObservers();
+        }
+        else {
+            setErrorMessage("Can not open the file " + filename, QMessageBox::Critical);
+            valid = false;
+        }
+        file.close();
+    }
+    else valid = (filename.size() == 0);
+
+    return valid;
+}
+
+bool ServerModel::loadSlice(QString slicename) {
+    bool valid = true;
+
+    QFile file(slicename);
+    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
+        QString content = QString::fromUtf8(file.readAll());
+        if (loadXml(content)) {
+            notifyObservers();
+        }
+        else {
+            setErrorMessage("Can not open the file " + slicename, QMessageBox::Critical);
+            valid = false;
+        }
+        file.close();
+    }
+    else valid = (slicename.size() == 0);
+
+    return valid;
+}
+
+bool ServerModel::save(QString fileName) {
+    QFile file(fileName);
+
+    QString content = server->getContent();
+    if (content.size() == 0) {
+        setErrorMessage(QString("No sniffed information to save."),QMessageBox::Warning);
+        return true;
+    }
+
+    if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
+        file.write(content.toUtf8());
+        file.close();
+        return true;
+    }
+
+    setErrorMessage("Can not write on the file " + fileName, QMessageBox::Critical);
+    return false;
+}
+
+bool ServerModel::searchInFiles(SearchCommand &command) {
+    QString finalResult;
+    QStringList results;
+    bool valid = true;
+
+    valid = valid && getSearchResults(command,results);
+    if (valid) joinXml(results, finalResult);
+    if (valid) server->clear();
+    return valid && loadXml(finalResult);
+}
+
+bool ServerModel::getSearchResults(SearchCommand &command, QStringList &results) {
+    results.clear();
+    bool valid = true;
+
+    for (int i = 0; i < command.filenames.size() && valid; i++) {
+        QFile file(command.filenames.at(i));
+        if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
+            QString content = QString::fromUtf8(file.readAll());
+            QString result;
+            valid = valid && filter.generateFilteredXmlDocument(command,content,result);
+            if (valid) results.append(result);
+            file.close();
+        }
+        else {
+            setErrorMessage("Can not open the file " + command.filenames.at(i), QMessageBox::Critical);
+            valid = false;
+        }
+    }
+    return valid;
+}
+
+void ServerModel::joinXml(QStringList &xmlData, QString &joined) {
+    int index;
+    joined.clear();
+    for (int i = 0; i < xmlData.size(); i++) {
+        i > 0 ? index = joined.lastIndexOf("</" + SNIFFED + ">") : index = -1;
+        if (index > 0) {
+            int index2 = xmlData.at(i).indexOf("<" + SNIFFED + ">");
+            if (index2 > 0) {
+                joined = joined.left(index);
+                joined.append(xmlData.at(i).right(xmlData.at(i).size()-xmlData.at(i).indexOf("<" + SNIFFED + ">")-SNIFFED.size()-2));
+            }
+        }
+        else joined = xmlData.at(i);
+    }
+}
+
+bool ServerModel::loadXml(QString &xmlContent) {
+    std::set<ipAddress> addr;
+    bool valid =  extractor.extract(xmlContent,addr);
+    if (valid)
+        server->load(xmlContent,addr);
+    return valid;
+}
+
+
 

@@ -18,32 +18,44 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #ifndef SNIFFTHREAD_H
 #define SNIFFTHREAD_H
 
-#include <functional>
+
 #include <thread>
 #include <set>
-#include <QStandardItemModel>
 #include "devices.h"
 #include "dnssingleton.h"
 #include "packetinfopresenter.h"
 
-class SniffThread : public SettingObserver
+class SniffThread
 {
 public:
-    SniffThread(const Devices &devs)
-        : devRef(devs) {}
+    Devices devs;
 
-    void start(int deviceNumber, const QString &filter, std::function<void(QString)> errorfunc);
-    bool stop(QString &name, int &number, std::set<ipAddress> &threadAdresses);
+    SniffThread() {bRun = false;}
+    ~SniffThread();
+
+    std::function<void(traffic&)> firePacketNumber;
+    std::function<void(traffic&)> fireByteNumber;
+
+    void registerObserver(SniffObserver *observer) {observers.push_back(observer);}
+    void unregisterObserver(SniffObserver *observer);
+
+    void start(int deviceNumber);
+    bool stop();
 
     void setPacketInfoPresenter(TablePacketInfoPresenter *presenter) {packetInfo = presenter;}
+    void setFilter(QString filter) {filterString = filter;}
+    void update(const Settings &set) {setting = set;}
+
+    bool isSniffing() {return bRun;}
 
 private:
+    Settings setting;
+
+    std::vector<SniffObserver*> observers;
+
     QString xmlContent;
     QString filterString;
     QStandardItemModel *display;
-    const Devices &devRef;
-
-    std::function<void(QString)> errorHandle;
 
     QString errorStr;
 
@@ -54,7 +66,7 @@ private:
     int colorCode;
     int devId;
     volatile bool bRun;
-    bool valid;
+    bool valid, thirdParty;
     std::thread thread;
 
     std::vector<addressItem> addresses;
@@ -62,14 +74,17 @@ private:
 
     std::set<ipAddress> seenAdresses;
 
-    ipAddress currentHome;
+    ipAddress currentHome, localIP;
     u_short hostPort, localPort;
-    long int currentTimeInSeconds;
+    long int currentTimeInSeconds, lastTime;
 
-    int counter, sliceNumber;
+    traffic data, bytes;
+    int counter, sliceNumber, packetNumber;
     bool foundNew, incoming;
 
     QString content[COLUMNNUMBER];
+
+    void notifyObservers();
 
     void run();
     void init();

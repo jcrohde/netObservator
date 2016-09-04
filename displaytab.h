@@ -19,79 +19,100 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #define DISPLAYTAB_H
 
 #include <QTabWidget>
-#include <QStandardItemModel>
-#include <QTableView>
 #include <QToolButton>
-#include <vector>
-#include "settingsdialog.h"
-#include "model.h"
-#include "view.h"
-#include "sniffthread.h"
-#include "searchdialog.h"
-#include <memory>
-#include <functional>
+#include "modelview.h"
 #include "controller.h"
 
-struct modelView {
-    XmlServer model;
-    View view;
-
-    modelView(ViewXmlReader *reader, XmlFilter *filter);
-};
-
 struct Page : public QDialog {
+    Q_OBJECT
+public:
     modelView mv;
-    SettingsDialog *settings;
 
     Page(ViewXmlReader *reader, XmlFilter *filter) : mv(reader,filter) {
         QVBoxLayout *pageLayout = new QVBoxLayout();
+
+        QHBoxLayout *topLayout = new QHBoxLayout();
+        sniffLabel = new QLabel("recently sniffed:");
+        topLayout->addWidget(sniffLabel);
+        sliceBox = new QComboBox();
+        topLayout->addWidget(sliceBox);
+        topLayout->addStretch();
+        sniffLabel->setVisible(false);
+        sliceBox->setVisible(false);
+        pageLayout->addLayout(topLayout);
+
         pageLayout->addWidget(mv.view.tablePacketInfo.display.display);
+        pageLayout->addWidget(new QLabel("Content of Selected Cell:"));
+        cellContent = new QTextEdit;
+        pageLayout->addWidget(cellContent);
         setLayout(pageLayout);
+
+        cellContent->setReadOnly(true);
+        cellContent->setMaximumHeight(90);
+        cellContent->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Maximum);
+        mv.view.tablePacketInfo.display.display->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        QObject::connect(mv.view.tablePacketInfo.display.display,SIGNAL(clicked(const QModelIndex &)),this,SLOT(printContent(const QModelIndex &)));
     }
 
-    ~Page() {
-        settings->unregisterObserver(&mv.view);
+    void setSlicesVisible(QStringList sliceNames) {
+        if (!(sliceNames.size() > 0 && sniffLabel->isVisible())) {
+            sliceBox->setVisible(sliceNames.size() > 0);
+            sniffLabel->setVisible(sliceNames.size() > 0);
+
+            sliceBox->blockSignals(true);
+            sliceBox->clear();
+            for (int i = 0; i < sliceNames.size(); i++) {
+                sliceBox->addItem(sliceNames[i]);
+            }
+            sliceBox->blockSignals(false);
+        }
+    }
+
+    QComboBox *sliceBox;
+
+private:
+    QTextEdit *cellContent;
+    QLabel *sniffLabel;
+
+private slots:
+    void printContent(const QModelIndex &index) {
+        myCellMutex.lock();
+        if (index.row()< mv.view.tablePacketInfo.display.tableModel->rowCount())
+            cellContent->setText(index.data().toString());
+        myCellMutex.unlock();
     }
 };
 
-class DisplayTab : public QTabWidget, public SettingObserver
+class DisplayTab : public QTabWidget, public serverObserver
 {
     Q_OBJECT
 public:
-    DisplayTab(Controller *c, SniffThread *sth, SettingsDialog *set, SearchDialog *sDlg, std::function<bool()> modifiable);
+    DisplayTab(Controller *c);
 
-    void setTabTitle(QString title, bool add);
-
-    void setSniffing(bool sniff) {sniffing = sniff; setToCurrentTab(currentIndex());}
-
-    void update(const Settings &set);
+    void update(const serverState &state);
+    void fixCurrentTab(bool fix);
 
 private:
-    std::function<bool()> canBeModified;
+    bool fixed;
+    int fixIndex;
 
-    int displayCount, myIndex;
+    Controller *controll;
 
-    bool sniffing;
+    int displayCount;
 
     QToolButton *toolButton;
-    SettingsDialog *settingSubject;
 
     ViewXmlReader reader;
     XmlFilter filter;
-    SniffThread *sniff;
-    SearchDialog *searchDlg;
-    Controller *controller;
 
-    XmlServer *currentModel;
-    TablePacketInfoPresenter *currentModelPresenter;
-
-    void updateData(int index);
+    void updateController(int index);
 
 private slots:
     void add();
     void closeTab(int index);
     void setToCurrentTab(int index);
-
+    void loadSlice(QString sliceName);
 };
 
 #endif // DISPLAYTAB_H

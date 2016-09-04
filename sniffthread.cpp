@@ -24,29 +24,56 @@ static bool findaddr(std::vector<ipAddress> &addrVec, ipAddress addr) {
     return std::find(addrVec.begin(),addrVec.end(),addr) != addrVec.end();
 }
 
-void SniffThread::start(int deviceNumber, const QString &filter, std::function<void(QString)> errorfunc) {
+SniffThread::~SniffThread() {
+    observers.clear();
+    stop();
+}
+
+void SniffThread::unregisterObserver(SniffObserver *observer) {
+    std::vector<SniffObserver*>::iterator pos = std::find(observers.begin(),observers.end(),observer);
+    if (pos != observers.end())
+        observers.erase(pos);
+}
+
+void SniffThread::start(int deviceNumber) {
     if (!thread.joinable()) {
-        errorHandle = errorfunc;
-        filterString = filter;
         devId = deviceNumber;
 
         bRun = true;
         valid = true;
+        notifyObservers();
 
         thread = std::thread(&SniffThread::run, this);
     }
 }
 
-bool SniffThread::stop(QString &name, int &number, std::set<ipAddress> &threadAdresses) {
+bool SniffThread::stop() {
     if (thread.joinable()) {
         bRun = false;
         thread.join();
 
-        number = sliceNumber;
-        name = setting.sliceFileName;
-        threadAdresses = seenAdresses;
+        notifyObservers();
     }
     return valid && setting.save;
+}
+
+void SniffThread::notifyObservers() {
+    sniffState state;
+
+    state.valid = valid;
+    state.sniffing = bRun;
+    state.addresses = seenAdresses;
+    if (valid && !bRun) {
+        for (int i = 1; i <= sliceNumber; i++) {
+            state.sliceNames.append(setting.sliceFileName + QString::number(i) + ".xml");
+        }
+    }
+    if (!valid)
+        state.errorMessage = errorStr;
+
+    for (auto observer: observers) {
+        observer->update(state);
+    }
 }
 
 void SniffThread::run() {
@@ -64,7 +91,7 @@ void SniffThread::run() {
     if (setting.save) xmlContent += "</" + SNIFFED + ">";
 
     if (!valid)
-        errorHandle(errorStr);
+        notifyObservers();
 }
 
 void SniffThread::init() {
@@ -73,14 +100,18 @@ void SniffThread::init() {
 
     seenAdresses.clear();
     addresses.clear();
+    data.packetNumber = 0;
+    data.seconds = 0;
+    firePacketNumber(data);
+    data.seconds = time(NULL);
 
-    devRef.getLocalIpAddresses(devId,localAddresses);
+    devs.getLocalIpAddresses(devId,localAddresses);
 }
 
 void SniffThread::startMainLoop() {
     pcap_t* handle;
 
-    handle = pcap_open_live(devRef.getDevice(devId)->name,BUFSIZ,0,1000,errorBuffer);
+    handle = pcap_open_live(devs.getDevice(devId)->name,BUFSIZ,0,1000,errorBuffer);
     if(handle == NULL) {
         QString errorStr = "Can not open device. ";
         errorStr += errorBuffer;
@@ -101,7 +132,7 @@ bool SniffThread::setFilter(pcap_t*& handle) {
         char *filter = new char [str.size()+1];
         strcpy(filter, str.c_str());
 
-        bpf_u_int32 netmask =((struct sockaddr_in *) devRef.getDevice(devId)->addresses->netmask)->sin_addr.S_un.S_addr;
+        bpf_u_int32 netmask =((struct sockaddr_in *) devs.getDevice(devId)->addresses->netmask)->sin_addr.S_un.S_addr;
         bpf_program prog;
 
         if (valid) {
@@ -143,6 +174,24 @@ void SniffThread::executeMainLoop(pcap_t*& handle,DNSsingleton &cache) {
             generateSlice();
             counter = 0;
         }
+        if (bRun && (readCode == 0 || currentTimeInSeconds > data.seconds)) {
+            firePacketNumber(data);
+            fireByteNumber(bytes);
+            if (readCode) {
+                data.packetNumber = 1;
+                bytes.packetNumber = header->caplen;
+            }
+            else {
+                data.packetNumber = 0;
+                bytes.packetNumber = 0;
+            }
+            data.seconds = currentTimeInSeconds;
+        }
+        else {
+            data.packetNumber++;
+            bytes.packetNumber += header->caplen;
+        }
+
     } while(bRun && readCode >= 0);
 
 }
@@ -159,11 +208,12 @@ void SniffThread::getPacketInfo(const struct pcap_pkthdr *header, const u_char *
 
     currentTimeInSeconds = header->ts.tv_sec;
 
-    getTimeString();
     foundNew = getConnectedAddressInfo(ih,uh,cache);
     getProtocol(ih);
+    content[TIME] = QString::number(currentTimeInSeconds);
     content[HOSTPORT] = QString::number(hostPort);
-    content[LOCALPORT] = QString::number(localPort);
+    content[LOCALSRCADDRESS] = localIP.toQString();
+    content[LOCALSRCPORT] = QString::number(localPort);
     content[HOSTADDRESS] = currentHome.toQString();
     if (setting.save) seenAdresses.insert(currentHome);
     if (bRun) {
@@ -202,20 +252,29 @@ bool SniffThread::updateConnectedAddresses(ipAddress &addr,DNSsingleton &cache) 
 }
 
 bool SniffThread::getConnectedAddressInfo(ipHeader *ih,udpHeader *uh,DNSsingleton &cache) {
+    thirdParty = false;
     if (findaddr(localAddresses,(ipAddress) ih->destAddr)) {
         content[DIRECTION] = "in";
         incoming = true;
         hostPort = ntohs(uh->srcPort);
         localPort = ntohs(uh->destPort);
         currentHome = ih->srcAddr;
+        localIP = ih->destAddr;
         return updateConnectedAddresses(ih->srcAddr,cache);
     }
     else {
-        content[DIRECTION] = "out";
+
         incoming = false;
         hostPort = ntohs(uh->destPort);
         localPort = ntohs(uh->srcPort);
         currentHome = ih->destAddr;
+        localIP = ih->srcAddr;
+        if (findaddr(localAddresses,(ipAddress) ih->srcAddr))
+            content[DIRECTION] = "out";
+        else {
+            thirdParty = true;
+            content[DIRECTION] = "to Host from SRC";
+        }
         return updateConnectedAddresses(ih->destAddr,cache);
     }
 }
@@ -234,17 +293,17 @@ void SniffThread::getProtocol(ipHeader *ih) {
 
     case 1:
         content[PROTOCOL] = "ICMP";
-        colorCode = 2;
+        colorCode = 3;
         break;
 
     case 2:
         content[PROTOCOL] = "IGMP";
-        colorCode = 2;
+        colorCode = 3;
         break;
 
     default:
         int i = ih->protocol;
-        colorCode = 4;
+        colorCode = 6;
         content[PROTOCOL] = QString::number(i);
         break;
     }
@@ -271,11 +330,13 @@ void SniffThread::presentPacketInfo() {
         storePacketInfo();
     }
     if (bRun && foundNew) {
-        packetInfo->show(content,(PacketInfoPresenter::colorCode) (colorCode + !incoming));
+        getTimeString();
+        packetInfo->show(content,(TablePacketInfoPresenter::colorCode) (colorCode + !incoming +thirdParty));
     }
 }
 
 void SniffThread::killOldEntries() {
+    myCellMutex.lock();
     int i = addresses.size();
     while (i > 0) {
         i--;
@@ -284,6 +345,7 @@ void SniffThread::killOldEntries() {
             packetInfo->display.tableModel->removeRow(i);
         }
     }
+    myCellMutex.unlock();
 }
 
 void SniffThread::storePacketInfo() {
@@ -305,7 +367,13 @@ void SniffThread::generateSlice() {
         file.write(xmlContent.toUtf8());
         file.close();
     }
+    else {
+        setErrorMessage("Can not open the file " + fileName, QMessageBox::Critical);
+        valid = false;
+    }
 
-    xmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-    xmlContent += "<"+ SNIFFED + ">";
+    if (valid) {
+        xmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+        xmlContent += "<"+ SNIFFED + ">";
+    }
 }

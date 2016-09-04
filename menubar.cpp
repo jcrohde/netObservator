@@ -20,11 +20,11 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 MenuBar::MenuBar(QMenuBar *parent) :
     QMenuBar(parent)
 {
-    newAction = new MethodAction("New",this);
-    openAction = new MethodAction("Open",this);
-    saveAction = new MethodAction("Save",this);
-    saveAsAction = new MethodAction("Save As",this);
-    closeAction = new MethodAction("Quit",this);
+    newAction = new intAction(CommandCode::CLEAR,"New",this);
+    openAction = new intAction(CommandCode::LOAD,"Open",this);
+    saveAction = new intAction(CommandCode::SAVEFILE,"Save",this);
+    saveAsAction = new intAction(CommandCode::SAVEFILEAS,"Save As",this);
+    closeAction = new QAction("Quit",this);
 
     newAction->setIcon(QIcon("icons/new.png"));
     openAction->setIcon(QIcon("icons/open.png"));
@@ -36,16 +36,24 @@ MenuBar::MenuBar(QMenuBar *parent) :
     saveAsAction->setShortcut(QKeySequence("Ctrl+S"));
     closeAction->setShortcut(QKeySequence("Ctrl+Q"));
 
-    licenseAction = new intAction(stringKey::LICENSE, "License", this);
-    hintAction = new intAction(stringKey::HELP, "Help",this);
-    authorAction = new intAction(stringKey::ABOUT, "About",this);
+    statisticsAction = new intAction(CommandCode::SHOWSTATISTICSDIALOG,"Statistics",this);
+    trafficAction = new intAction(CommandCode::SHOWTRAFFICDIALOG,"Packet Number",this);
+    byteAction = new intAction(CommandCode::SHOWBYTEDIALOG,"Byte Number",this);
+
+    searchOnTabAction = new intAction(CommandCode::SHOWSEARCHTABDIALOG,"Search on Tab",this);
+    searchOnFilesAction = new intAction(CommandCode::SHOWSEARCHFILEDIALOG,"Search on Files",this);
+
+    licenseAction = new intAction(CommandCode::LICENSE, "License", this);
+    hintAction = new intAction(CommandCode::HELP, "Help",this);
+    authorAction = new intAction(CommandCode::ABOUT, "About",this);
 
     hintAction->setShortcut(QKeySequence("Ctrl+H"));
 
     fileMenu = new QMenu("File");
-    filterAction = new MethodAction("Packet Filter",this);
-    settingsAction = new MethodAction("Settings",this);
-    searchAction = new MethodAction("Search",this);
+    filterAction = new intAction(CommandCode::SHOWPACKETFILTEREDITOR,"Packet Filter",this);
+    viewMenu = new QMenu("View");
+    settingsAction = new intAction(CommandCode::SHOWSETTINGSDIALOG,"Settings",this);
+    searchMenu = new QMenu("Search");
     helpMenu = new QMenu("Help");
 
     fileMenu->addAction(newAction);
@@ -55,21 +63,43 @@ MenuBar::MenuBar(QMenuBar *parent) :
     fileMenu->addSeparator();
     fileMenu->addAction(closeAction);
 
+    viewMenu->addAction(statisticsAction);
+    viewMenu->addAction(trafficAction);
+    viewMenu->addAction(byteAction);
+
+    searchMenu->addAction(searchOnTabAction);
+    searchMenu->addAction(searchOnFilesAction);
+
+    searchOnTabAction->setIcon(QIcon("icons/searchTab.png"));
+    searchOnFilesAction->setIcon(QIcon("icons/searchFiles.png"));
+
     helpMenu->addAction(hintAction);
     helpMenu->addSeparator();
     helpMenu->addAction(licenseAction);
     helpMenu->addAction(authorAction);
 
+    hintAction->setIcon(QIcon("icons/help.png"));
+
     addMenu(fileMenu);
     addAction(filterAction);
+    addMenu(viewMenu);
     addAction(settingsAction);
-    addAction(searchAction);
+    addMenu(searchMenu);
     addMenu(helpMenu);
 
-    newAction->setIcon(QIcon("icons/new.png"));
-    saveAction->setIcon(QIcon("icons/save.png"));
-    saveAsAction->setIcon(QIcon("icons/saveAs.png"));
-    hintAction->setIcon(QIcon("icons/help.png"));
+    QObject::connect(newAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(openAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(saveAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(saveAsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+
+    QObject::connect(filterAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(statisticsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(trafficAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(byteAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(settingsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+
+    QObject::connect(searchOnTabAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(searchOnFilesAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
 }
 
 MenuBar::~MenuBar()

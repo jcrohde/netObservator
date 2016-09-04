@@ -25,7 +25,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 class ViewXmlReader : private XmlReader {
 public:
-    void read(QString XmlContent, PacketInfoPresenter *packetInfo);
+    void read(QString XmlContent, PacketInfoPresenter *&packetInfo);
 
 private:
     void readerAction(QString elementText);
@@ -36,24 +36,86 @@ private:
     QString content[COLUMNNUMBER];
 };
 
-class View: public SettingObserver, public ModelObserver
+/*--------------------------------------------------------------------------*/
+
+class View : public serverObserver {
+public:
+    std::function<void(QString&)> getContent;
+
+    virtual void update(const serverState &state);
+    void update(const Settings &set);
+    void getSettings(const Settings &set) {setting = set; packetInfo->update(set);}
+
+    PacketInfoPresenter *packetInfo;
+
+protected:
+    Settings setting;
+
+    virtual void rewriteInfo();
+    virtual void init();
+    ViewXmlReader *xmlReader;
+};
+
+/*--------------------------------------------------------------------------*/
+
+class DatabaseView : public View
 {
 public:
-    View(ViewXmlReader *reader);
-    ~View() {}
+    DatabaseView(ViewXmlReader *reader);
+    ~DatabaseView() {}
 
-    void update(const Settings &set);
-    void update(modelState state);
-    void init();
-
+    void compose(ViewComposition composition);
     TablePacketInfoPresenter tablePacketInfo;
+};
 
-private:    
+/*--------------------------------------------------------------------------*/
+
+class StatisticsView : public View
+{
+public:
+    StatisticsView();
+    ~StatisticsView() {}
+
+    void update(const serverState &state);
+    void update(column C);
+
+    void setSliceNames(const QStringList &names) {sliceNames = names;}
+    StatisticsPacketInfoPresenter statisticsPacketInfo;
+
+protected:
+    void init();
     void rewriteInfo();
 
-    ViewXmlReader *xmlReader;
-    QString xmlContent;
+private:
+    column COLUMN;
+    QStringList sliceNames;
 
+    ViewXmlReader myXmlReader;
+
+    void rewriteFileInfo();
+};
+
+/*--------------------------------------------------------------------------*/
+
+class TrafficView : public View {
+public:
+    TrafficView(TrafficPacketInfoPresenter::infoType type);
+    void setOutputDevice(std::function<void(int, long int)> device) {trafficPacketInfo.evaluatePacketsOfSecond = device;}
+    void update(const serverState &state);
+
+    void rewriteInfo();
+
+    void setSliceNames(const QStringList &names) {sliceNames = names;}
+
+    TrafficPacketInfoPresenter::infoType getType() {return trafficPacketInfo.getType();}
+
+private:
+    TrafficPacketInfoPresenter trafficPacketInfo;
+    ViewXmlReader r;
+
+    QStringList sliceNames;
+
+    void rewriteFileInfo();
 };
 
 #endif // VIEW_H
