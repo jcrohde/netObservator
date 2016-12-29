@@ -24,6 +24,7 @@ Controller::Controller(Model *m)
       byteTrafficView(TrafficPacketInfoPresenter::infoType::BYTES)
 {
     settings = new SettingsDialog;
+    viewSettingsDialog = new ViewSettingsDialog;
     statisticsDialog = new StatisticsDialog(&statisticsView);
     packetTrafficDialog = new TrafficDialog(&packetTrafficView);
     byteTrafficDialog = new TrafficDialog(&byteTrafficView);
@@ -38,10 +39,15 @@ Controller::Controller(Model *m)
     model->sniff.registerObserver(packetTrafficDialog);
     model->sniff.registerObserver(byteTrafficDialog);
 
+    packetTrafficView.parser = &model->parser;
+    byteTrafficView.parser = &model->parser;
+    statisticsView.parser = &model->parser;
+
     QObject::connect(searchTabDialog,SIGNAL(sig(SearchCommand&)),this,SLOT(search(SearchCommand&)));
     QObject::connect(&tabStrategy,SIGNAL(browse(bool)),this,SLOT(changeText(bool)));
     QObject::connect(searchFilesDialog,SIGNAL(sig(SearchCommand&)),this,SLOT(search(SearchCommand&)));
-    QObject::connect(settings,SIGNAL(change(Settings&)),this,SLOT(getSettings(Settings&)));
+    QObject::connect(viewSettingsDialog,SIGNAL(change(viewSettings&)),this,SLOT(getSettings(viewSettings&)));
+    QObject::connect(settings,SIGNAL(change(sniffSettings&)),this,SLOT(getSniffSettings(sniffSettings&)));
     QObject::connect(filterEditor,SIGNAL(commit(QString)),this,SLOT(getFilter(QString)));
 
     QObject::connect(statisticsDialog,SIGNAL(closeSignal()),this,SLOT(removeStatisticsView()));
@@ -51,9 +57,8 @@ Controller::Controller(Model *m)
     QObject::connect(this,SIGNAL(packets(int)),packetTrafficDialog,SLOT(getForPlot(int)));
     QObject::connect(this,SIGNAL(bytes(int)),byteTrafficDialog,SLOT(getForPlot(int)));
 
-
-    model->sniff.firePacketNumber = [&](traffic &data) {emit packets(data.packetNumber);};
-    model->sniff.fireByteNumber = [&](traffic &data) {emit bytes(data.packetNumber);};
+    model->parser.firePacketNumber = [&](traffic &data) {emit packets(data.packetNumber);};
+    model->parser.fireByteNumber = [&](traffic &data) {emit bytes(data.packetNumber);};
 }
 
 void Controller::setModelView(modelView *mv) {
@@ -61,8 +66,10 @@ void Controller::setModelView(modelView *mv) {
     statisticsView.getContent = mv->view.getContent;
     packetTrafficView.getContent = mv->view.getContent;
     byteTrafficView.getContent = mv->view.getContent;
-    model->server.set(&mv->model);
-    model->sniff.setPacketInfoPresenter(&mv->view.tablePacketInfo);
+    mv->view.parser = &model->parser;
+    mv->model.parser = &model->parser;
+    model->parser.setPacketInfoPresenter(&mv->view.tablePacketInfo);
+    model->server.set(&mv->model); 
 }
 
 bool Controller::isSomeDialogOpened() {
@@ -70,8 +77,7 @@ bool Controller::isSomeDialogOpened() {
         || (searchTabDialog && searchTabDialog->isVisible())
         || (searchFilesDialog && searchFilesDialog->isVisible())
         || (settings && settings->isVisible())
-        || (filterEditor && filterEditor->isVisible())
-        || (statisticsDialog && statisticsDialog->isVisible());
+        || (filterEditor && filterEditor->isVisible());
 }
 
 void Controller::executeCommand(Command cmd) {
@@ -79,14 +85,22 @@ void Controller::executeCommand(Command cmd) {
 
     if (command == CommandCode::LOAD)
         load();
-    if (command == CommandCode::LOADFILE)
+    else if (command == CommandCode::LOADFOLDER)
+        loadFolder();
+    else if (command == CommandCode::LOADFILE)
         model->server.load(cmd.arguments[0]);
+    else if (command == CommandCode::ADDTAB)
+        emit addTab();
     else if (command == CommandCode::CLEAR)
         model->server.clear();
     else if (command == CommandCode::SAVEFILE)
         saveFile();
     else if (command == CommandCode::SAVEFILEAS)
         saveFileAs();
+    else if (command == CommandCode::BACK)
+        model->server.changeText(false);
+    else if (command == CommandCode::FORWARD)
+        model->server.changeText(true);
     else if (command == CommandCode::SHOWPACKETFILTEREDITOR)
         filterEditor->show();
     else if (command == CommandCode::SHOWSEARCHTABDIALOG)
@@ -95,6 +109,8 @@ void Controller::executeCommand(Command cmd) {
         searchFilesDialog->show();
     else if (command == CommandCode::SHOWSETTINGSDIALOG)
         settings->show();
+    else if (command == CommandCode::SHOWCOLUMNSETTINGSDIALOG)
+        viewSettingsDialog->show();
     else if (command == CommandCode::SHOWSTATISTICSDIALOG) {
         model->view.attachStatistics(true);
         statisticsView.setSliceNames(model->server.getSliceNames());
@@ -106,11 +122,18 @@ void Controller::executeCommand(Command cmd) {
         model->server.registerObserver(&packetTrafficView);
         packetTrafficView.setSliceNames(model->server.getSliceNames());
         packetTrafficDialog->show();
+        model->view.setPacketPlot(true);
     }
     else if (command == CommandCode::SHOWBYTEDIALOG) {
         model->server.registerObserver(&byteTrafficView);
         byteTrafficView.setSliceNames(model->server.getSliceNames());
         byteTrafficDialog->show();
+        model->view.setBytePlot(true);
+    }
+    else if (command == CommandCode::CHANGEDEVICE) {
+        std::vector<ipAddress> localAddresses;
+        model->sniff.devs.getLocalIpAddresses(cmd.arguments[0].toInt(),localAddresses);
+        model->parser.update(localAddresses);
     }
     else if (command == CommandCode::SNIFF)
         handleSniffing(cmd);
@@ -121,9 +144,22 @@ void Controller::load() {
         NULL,
         QObject::tr("Open Document"),
         QDir::currentPath(),
-        QObject::tr("XML (*.xml)") );
+        QObject::tr("") );
 
+    if (!filename.isEmpty() && !model->server.isEmpty())
+        addTab();
     model->server.load(filename);
+}
+
+void Controller::loadFolder() {
+    QString folderName = fileDialog.getExistingDirectory(
+        NULL,
+        QObject::tr("Open Document"),
+        QDir::currentPath() );
+
+    if (!folderName.isEmpty() && !model->server.isEmpty())
+        addTab();
+    model->server.loadFolder(folderName);
 }
 
 void Controller::saveFile() {
@@ -134,7 +170,7 @@ void Controller::saveFile() {
 }
 
 void Controller::saveFileAs() {
-    QString fileName = fileDialog.getSaveFileName(NULL,QObject::tr("Save"),"Capture",QObject::tr("XML (*.xml)"));
+    QString fileName = fileDialog.getSaveFileName(NULL,QObject::tr("Save"),"Capture",QObject::tr("pcap (*.pcap)"));
     if(fileName.size() > 0) {
         model->server.save(fileName);
         lastSavedFileName = fileName;
@@ -144,8 +180,14 @@ void Controller::saveFileAs() {
 void Controller::handleSniffing(Command cmd) {
     if (model->sniff.isSniffing())
         model->sniff.stop();
-    else
-        model->sniff.start(cmd.arguments[0].toInt());
+    else {
+        if (statisticsDialog && statisticsDialog->isVisible())
+            setErrorMessage(QString("One cannot start to sniff while the Statistics Dialog is opened."),QMessageBox::Warning);
+        else {
+            model->parser.setPacketInfoPresenter(&model->view.view->tablePacketInfo);
+            model->sniff.start(cmd.arguments[0].toInt());
+        }
+    }
 }
 
 void Controller::getCommand(Command command) {
@@ -171,9 +213,13 @@ void Controller::changeText(bool forward) {
     model->server.changeText(forward);
 }
 
-void Controller::getSettings(Settings &set) {
+void Controller::getSettings(viewSettings &set) {
     model->view.update(set);
-    model->sniff.update(set);
     searchTabDialog->update(set);
     searchFilesDialog->update(set);
+}
+
+void Controller::getSniffSettings(sniffSettings &settings) {
+    model->sniff.update(settings);
+    model->parser.setDurationTime(settings.duration);
 }

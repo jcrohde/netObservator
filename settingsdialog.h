@@ -26,9 +26,10 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QSpinBox>
 #include <QPushButton>
 #include <QFileDialog>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include "util.h"
+#include "settings.h"
 #include "stringfactory.h"
 
 class SettingsDialog : public QDialog
@@ -41,31 +42,29 @@ private:
     QSpinBox *durationSpinBox;
     QSlider *durationSlider;
 
-    QCheckBox boxes[COLUMNNUMBER];
-    QCheckBox *allBox, *saveBox;
+    QComboBox *sniffModeBox;
 
     QPushButton *okBut, *cancelBut;
 
     QFileDialog *fileDialog;
-    QLineEdit *sliceNameEdit;
-    QPushButton *sliceNameBut;
+    QLineEdit *sliceNameEdit, *folderNameEdit;
+    QPushButton *sliceNameBut, *folderNameBut;
     QSpinBox *sliceSizeBox;
 
-    Settings setting;
+    sniffSettings setting;
 
-    void generateSniffingSection(QHBoxLayout *settingLayout);
-    void generatePresentationSection(QHBoxLayout *settingLayout);
+    void generateSniffingSection(QVBoxLayout *settingLayout);
     void generateButtonSection(QVBoxLayout *ordering);
     void connectSignalsAndSlots();
 
 private slots:
+    void selectSaveFolderName();
     void selectSliceFileName();
-    void activateSlices(bool selection);
-    void selectAll(bool selection);
+    void activateSlices(int selection);
     void changeSettings();
 
 signals:
-    void change(Settings&);
+    void change(sniffSettings&);
 };
 
 #endif // SETTINGSDIALOG_H

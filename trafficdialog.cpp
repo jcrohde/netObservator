@@ -255,12 +255,10 @@ void TrafficDialog::fillPolygon(long int secondsPast, int beginValue, int endVal
     polygon[2].setY(HEIGHT-1);
     polygon[3].setY(HEIGHT-1-endValue);
 
-
     poly.setPoint(0,polygon[0]);
     poly.setPoint(1,polygon[1]);
     poly.setPoint(2,polygon[2]);
     poly.setPoint(3,polygon[3]);
-
 
     QPainterPath path;
     path.addPolygon(poly);

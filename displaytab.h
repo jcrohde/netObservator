@@ -28,16 +28,12 @@ struct Page : public QDialog {
 public:
     modelView mv;
 
-    Page(ViewXmlReader *reader, XmlFilter *filter) : mv(reader,filter) {
+    Page() : mv() {
         QVBoxLayout *pageLayout = new QVBoxLayout();
 
         QHBoxLayout *topLayout = new QHBoxLayout();
-        sniffLabel = new QLabel("recently sniffed:");
-        topLayout->addWidget(sniffLabel);
         sliceBox = new QComboBox();
         topLayout->addWidget(sliceBox);
-        topLayout->addStretch();
-        sniffLabel->setVisible(false);
         sliceBox->setVisible(false);
         pageLayout->addLayout(topLayout);
 
@@ -56,9 +52,9 @@ public:
     }
 
     void setSlicesVisible(QStringList sliceNames) {
-        if (!(sliceNames.size() > 0 && sniffLabel->isVisible())) {
+        if (sliceNames != slices) {
+            slices = sliceNames;
             sliceBox->setVisible(sliceNames.size() > 0);
-            sniffLabel->setVisible(sliceNames.size() > 0);
 
             sliceBox->blockSignals(true);
             sliceBox->clear();
@@ -66,6 +62,7 @@ public:
                 sliceBox->addItem(sliceNames[i]);
             }
             sliceBox->blockSignals(false);
+            sliceBox->setEditable(true);
         }
     }
 
@@ -73,7 +70,8 @@ public:
 
 private:
     QTextEdit *cellContent;
-    QLabel *sniffLabel;
+    QStringList slices;
+    //QLabel *sniffLabel;
 
 private slots:
     void printContent(const QModelIndex &index) {
@@ -101,15 +99,12 @@ private:
 
     int displayCount;
 
-    QToolButton *toolButton;
-
-    ViewXmlReader reader;
-    XmlFilter filter;
-
     void updateController(int index);
 
-private slots:
+public slots:
     void add();
+
+private slots:
     void closeTab(int index);
     void setToCurrentTab(int index);
     void loadSlice(QString sliceName);

@@ -15,41 +15,42 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef DNSTHREAD_H
-#define DNSTHREAD_H
+#ifndef OBSERVERS_H
+#define OBSERVERS_H
 
-#include <condition_variable>
-#include <thread>
-#include <chrono>
-#include <functional>
 #include "ippacket.h"
+#include <QStringList>
 
-class DNSThread
-{
-public:
-    DNSThread();
-
-    void start(std::function<void(std::vector<addressItem>&,int&)> updFunc);
-    void stop();
-
-private:
-    std::function<void(std::vector<addressItem>&,int&)> update;
-    std::vector<addressItem> addresses;
-
-    std::condition_variable stopCondition;
-    std::mutex stopMutex;
-
-    volatile bool bRun;
-    std::thread thread;
-
-    time_t atLoopBegin, afterGettingNames;
-
-    int count;
-
-    void run();
-    void getHostNames();
-    QString getHostnameFromIp(ipAddress &addr);
-    void waitForLoopElapse();
+struct serverState{
+    std::set<ipAddress> addresses;
+    bool firstDocument;
+    QStringList sliceNames;
+    bool lastDocument;
+    bool blockedBySniffThread;
+    bool empty;
+    QString title;
 };
 
-#endif // DNSTHREAD_H
+class serverObserver {
+public:
+    virtual void update(const serverState &state) {storedState = state;}
+private:
+    serverState storedState;
+};
+
+struct sniffState {
+    std::set<ipAddress> addresses;
+    QString folderName;
+    QString errorMessage;
+    bool sniffing;
+    bool valid;
+};
+
+class SniffObserver {
+public:
+    virtual void update(const sniffState &state) {storedState = state;}
+private:
+    sniffState storedState;
+};
+
+#endif // OBSERVERS_H

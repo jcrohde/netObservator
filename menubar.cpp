@@ -16,18 +16,23 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "menubar.h"
+#include "command.h"
 
 MenuBar::MenuBar(QMenuBar *parent) :
     QMenuBar(parent)
 {
-    newAction = new intAction(CommandCode::CLEAR,"New",this);
-    openAction = new intAction(CommandCode::LOAD,"Open",this);
+    newAction = new intAction(CommandCode::ADDTAB,"New",this);
+    clearAction = new intAction(CommandCode::CLEAR,"Clear",this);
+    openAction = new intAction(CommandCode::LOAD,"Open File",this);
+    folderAction = new intAction(CommandCode::LOADFOLDER,"Open Folder",this);
     saveAction = new intAction(CommandCode::SAVEFILE,"Save",this);
     saveAsAction = new intAction(CommandCode::SAVEFILEAS,"Save As",this);
     closeAction = new QAction("Quit",this);
 
-    newAction->setIcon(QIcon("icons/new.png"));
+    newAction->setIcon(QIcon("icons/add.png"));
+    clearAction->setIcon(QIcon("icons/new.png"));
     openAction->setIcon(QIcon("icons/open.png"));
+    folderAction->setIcon(QIcon("icons/folder.png"));
     saveAction->setIcon(QIcon("icons/save.png"));
     saveAsAction->setIcon(QIcon("icons/saveAs.png"));
 
@@ -39,6 +44,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     statisticsAction = new intAction(CommandCode::SHOWSTATISTICSDIALOG,"Statistics",this);
     trafficAction = new intAction(CommandCode::SHOWTRAFFICDIALOG,"Packet Number",this);
     byteAction = new intAction(CommandCode::SHOWBYTEDIALOG,"Byte Number",this);
+    tableAction = new intAction(CommandCode::SHOWCOLUMNSETTINGSDIALOG, "Packet Information",this);
 
     searchOnTabAction = new intAction(CommandCode::SHOWSEARCHTABDIALOG,"Search on Tab",this);
     searchOnFilesAction = new intAction(CommandCode::SHOWSEARCHFILEDIALOG,"Search on Files",this);
@@ -57,7 +63,9 @@ MenuBar::MenuBar(QMenuBar *parent) :
     helpMenu = new QMenu("Help");
 
     fileMenu->addAction(newAction);
+    fileMenu->addAction(clearAction);
     fileMenu->addAction(openAction);
+    fileMenu->addAction(folderAction);
     fileMenu->addAction(saveAction);
     fileMenu->addAction(saveAsAction);
     fileMenu->addSeparator();
@@ -66,6 +74,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     viewMenu->addAction(statisticsAction);
     viewMenu->addAction(trafficAction);
     viewMenu->addAction(byteAction);
+    viewMenu->addAction(tableAction);
 
     searchMenu->addAction(searchOnTabAction);
     searchMenu->addAction(searchOnFilesAction);
@@ -87,8 +96,13 @@ MenuBar::MenuBar(QMenuBar *parent) :
     addMenu(searchMenu);
     addMenu(helpMenu);
 
+    saveAction->setDisabled(true);
+    saveAsAction->setDisabled(true);
+
     QObject::connect(newAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(clearAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(openAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(folderAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(saveAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(saveAsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
 
@@ -97,6 +111,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     QObject::connect(trafficAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(byteAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(settingsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(tableAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
 
     QObject::connect(searchOnTabAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(searchOnFilesAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
@@ -105,4 +120,13 @@ MenuBar::MenuBar(QMenuBar *parent) :
 MenuBar::~MenuBar()
 {
 
+}
+
+void MenuBar::update(const serverState &state) {
+    saveAction->setDisabled(state.empty);
+    saveAsAction->setDisabled(state.empty);
+
+    statisticsAction->setDisabled(state.empty);
+
+    searchOnTabAction->setDisabled(state.empty);
 }

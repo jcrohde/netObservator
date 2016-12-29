@@ -29,12 +29,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     fileDialog = new QFileDialog();
 
     QVBoxLayout *ordering = new QVBoxLayout();
-    QHBoxLayout *settingLayout = new QHBoxLayout();
 
-    generateSniffingSection(settingLayout);
-    generatePresentationSection(settingLayout);
-
-    ordering->addLayout(settingLayout);
+    generateSniffingSection(ordering);
 
     generateButtonSection(ordering);
 
@@ -47,91 +43,60 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     connectSignalsAndSlots();
 }
 
-void SettingsDialog::generateSniffingSection(QHBoxLayout *settingLayout) {
-    QVBoxLayout *optionLayout = new QVBoxLayout();
-
-    QGroupBox *optionFrame = new QGroupBox(this);
-    optionFrame->setTitle("Sniffing");
-    optionFrame->setStyleSheet("QGroupBox{border:1px solid gray;border-radius:5px;margin-top: 1ex;} QGroupBox::title{subcontrol-origin: margin;subcontrol-position:top center;padding:0 3px;}");
-
-    optionLayout->addStretch();
-
-    optionLayout->addWidget(new QLabel("duration in sec"));
-
+void SettingsDialog::generateSniffingSection(QVBoxLayout *settingLayout) {
+    QHBoxLayout *durationLayout = new QHBoxLayout();
+    durationLayout->addWidget(new QLabel("duration in sec"));
     durationSpinBox = new QSpinBox;
     durationSpinBox->setValue(20);
-    optionLayout->addWidget(durationSpinBox);
+    durationLayout->addWidget(durationSpinBox);
+    settingLayout->addLayout(durationLayout);
 
     durationSlider = new QSlider(Qt::Horizontal);
     durationSlider->setRange(10,60);
     durationSlider->setValue(20);
-    optionLayout->addWidget(durationSlider);
+    settingLayout->addWidget(durationSlider);
 
-    optionLayout->addStretch();
+    settingLayout->addStretch();
 
-    saveBox = new QCheckBox();
-    optionLayout->addWidget(saveBox);
-    saveBox->setText("save");
-    saveBox->setChecked(setting.save);
+    sniffModeBox = new QComboBox();
+    sniffModeBox->addItem("save and show connections");
+    sniffModeBox->addItem("just save");
+    sniffModeBox->addItem("just show connections");
+    settingLayout->addWidget(sniffModeBox);
 
-    optionLayout->addStretch();
+    settingLayout->addStretch();
 
-    optionLayout->addWidget(new QLabel("Slice file name:"));
+    QHBoxLayout *folderNameLayout = new QHBoxLayout();
+    folderNameLayout->addWidget(new QLabel("Save in Folder:"));
+    folderNameEdit = new QLineEdit();
+    folderNameEdit->insert("Sniffed");
+    folderNameBut = new QPushButton();
+    folderNameBut->setIcon(QIcon("icons/open.png"));
+    folderNameLayout->addWidget(folderNameEdit);
+    folderNameLayout->addWidget(folderNameBut);
+    settingLayout->addLayout(folderNameLayout);
+
+    settingLayout->addStretch();
+
     QHBoxLayout *sliceNameLayout = new QHBoxLayout();
-
+    sliceNameLayout->addWidget(new QLabel("Slice file name:"));
     sliceNameEdit = new QLineEdit();
     sliceNameEdit->insert("Slice");
-
     sliceNameBut = new QPushButton();
     sliceNameBut->setIcon(QIcon("icons/open.png"));
-
     sliceNameLayout->addWidget(sliceNameEdit);
     sliceNameLayout->addWidget(sliceNameBut);
-    optionLayout->addLayout(sliceNameLayout);
+    settingLayout->addLayout(sliceNameLayout);
 
-    optionLayout->addStretch();
+    settingLayout->addStretch();
 
-    optionLayout->addWidget(new QLabel("Packets per Slice:"));
-
+    QHBoxLayout *packetLayout = new QHBoxLayout();
+    packetLayout->addWidget(new QLabel("Packets per Slice:"));
     sliceSizeBox = new QSpinBox();
     sliceSizeBox->setRange(100,100000);
     sliceSizeBox->setValue(1000);
-    optionLayout->addWidget(sliceSizeBox);
-
-    optionFrame->setLayout(optionLayout);
-
-    settingLayout->addWidget(optionFrame);
-}
-
-void SettingsDialog::generatePresentationSection(QHBoxLayout *settingLayout) {
-    QGroupBox *infoFrame = new QGroupBox(this);
-
-    infoFrame->setTitle("Presentation");
-    infoFrame->setFlat(true);
-    infoFrame->setStyleSheet("QGroupBox{border:1px solid gray;border-radius:5px;margin-top: 1ex;} QGroupBox::title{subcontrol-origin: margin;subcontrol-position:top center;padding:0 3px;}");
-
-    QGridLayout *centralLayout = new QGridLayout();
-
-    for (int i = 0; i< COLUMNNUMBER; i++) {
-        centralLayout->addWidget(&boxes[i],i,1,1,1);
-        boxes[i].setText("show " + onLocalOrSrc(LABEL[i]));
-        boxes[i].setChecked(setting.showInfo[i]);
-    }
-
-    QFrame *line = new QFrame(this);
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-    line->setLineWidth(1);
-
-    centralLayout->addWidget(line,10,0,1,2);
-
-    allBox = new QCheckBox();
-    centralLayout->addWidget(allBox,11,1,1,1);
-    allBox->setText("show all");
-
-    infoFrame->setLayout(centralLayout);
-
-    settingLayout->addWidget(infoFrame);
+    packetLayout->addWidget(sliceSizeBox);
+    settingLayout->addLayout(packetLayout);
 }
 
 void SettingsDialog::generateButtonSection(QVBoxLayout *ordering) {
@@ -151,9 +116,9 @@ void SettingsDialog::generateButtonSection(QVBoxLayout *ordering) {
 void SettingsDialog::connectSignalsAndSlots() {
     connect(durationSlider, SIGNAL(valueChanged(int)),durationSpinBox, SLOT(setValue(int)));
     connect(durationSpinBox, SIGNAL(valueChanged(int)),durationSlider, SLOT(setValue(int)));
-    connect(allBox,SIGNAL(toggled(bool)),this,SLOT(selectAll(bool)));
-    connect(saveBox,SIGNAL(toggled(bool)),this,SLOT(activateSlices(bool)));
+    connect(sniffModeBox,SIGNAL(currentIndexChanged(int)),this,SLOT(activateSlices(int)));
     connect(sliceNameBut,SIGNAL(clicked()),this,SLOT(selectSliceFileName()));
+    connect(folderNameBut,SIGNAL(clicked()),this,SLOT(selectSaveFolderName()));
     connect(okBut,SIGNAL(clicked()),this,SLOT(changeSettings()));
     connect(cancelBut,SIGNAL(clicked()),this,SLOT(close()));
 }
@@ -163,30 +128,39 @@ void SettingsDialog::selectSliceFileName() {
         this,
         tr("Select Slice File Name"),
         QDir::currentPath(),
-        tr("") );
+        tr("")
+    );
 
     sliceNameEdit->setText(filename);
 }
 
-void SettingsDialog::activateSlices(bool selection) {
-    sliceNameBut->setEnabled(selection);
-    sliceNameEdit->setEnabled(selection);
-    sliceSizeBox->setEnabled(selection);
+
+void SettingsDialog::selectSaveFolderName() {
+    QString filename = fileDialog->getExistingDirectory(
+        this,
+        tr("Select Slice File Name"),
+        QDir::currentPath());
+
+    if (filename.size()>0) {
+        QString text = folderNameEdit->text();
+        text = text.right(text.size()-text.lastIndexOf("/")-1);
+        text = filename + "/" + text;
+        folderNameEdit->setText(text);
+    }
 }
 
-void SettingsDialog::selectAll(bool selection) {
-    for (int i = 0; i< COLUMNNUMBER; i++) {
-        if (selection) boxes[i].setChecked(true);
-        boxes[i].setDisabled(selection);
-    }
+void SettingsDialog::activateSlices(int selection) {
+    bool save = (selection == (int)sniffSettings::Mode::JUSTSAVE || selection == (int)sniffSettings::Mode::SAVEANDSHOW);
+    sliceNameBut->setEnabled(save);
+    sliceNameEdit->setEnabled(save);
+    sliceSizeBox->setEnabled(save);
 }
 
 void SettingsDialog::changeSettings() {
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        setting.showInfo[i] = boxes[i].isChecked();
-    }
+
     setting.duration = durationSpinBox->value();
-    setting.save = saveBox->isChecked();
+    setting.mode = (sniffSettings::Mode)sniffModeBox->currentIndex();
+    setting.storeFolderName = folderNameEdit->text();
     setting.sliceFileName = sliceNameEdit->text();
     setting.sliceSize = sliceSizeBox->value();
 

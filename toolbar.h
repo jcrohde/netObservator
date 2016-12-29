@@ -15,41 +15,38 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef DNSTHREAD_H
-#define DNSTHREAD_H
+#ifndef TOOLBAR_H
+#define TOOLBAR_H
 
-#include <condition_variable>
-#include <thread>
-#include <chrono>
-#include <functional>
-#include "ippacket.h"
+#include <QToolBar>
+#include <QToolButton>
+#include "observers.h"
+#include "command.h"
 
-class DNSThread
+class ToolBar : public QToolBar, public serverObserver
 {
+    Q_OBJECT
 public:
-    DNSThread();
+    ToolBar();
 
-    void start(std::function<void(std::vector<addressItem>&,int&)> updFunc);
-    void stop();
+    void update(const serverState &state);
 
 private:
-    std::function<void(std::vector<addressItem>&,int&)> update;
-    std::vector<addressItem> addresses;
+    QToolButton *addButton;
+    QToolButton *openButton;
+    QToolButton *saveButton;
+    QToolButton *backButton;
+    QToolButton *forwardButton;
 
-    std::condition_variable stopCondition;
-    std::mutex stopMutex;
+private slots:
+    void add();
+    void open();
+    void save();
+    void back();
+    void forward();
 
-    volatile bool bRun;
-    std::thread thread;
-
-    time_t atLoopBegin, afterGettingNames;
-
-    int count;
-
-    void run();
-    void getHostNames();
-    QString getHostnameFromIp(ipAddress &addr);
-    void waitForLoopElapse();
+signals:
+    void send(CommandCode);
 };
 
-#endif // DNSTHREAD_H
+#endif // TOOLBAR_H

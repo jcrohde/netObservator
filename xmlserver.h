@@ -18,39 +18,19 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #ifndef XMLSERVER_H
 #define XMLSERVER_H
 
-#include "xmlreader.h"
-
-class XmlFilter : private XmlReader {
-public:
-    bool generateFilteredXmlDocument(const SearchCommand &cmd, QString &input, QString &output);
-private:
-
-    std::unique_ptr<QXmlStreamWriter> writer;
-
-    SearchCommand command;
-
-    QList<QString> subNodes;
-
-    QRegExp regexp;
-
-    int columnCount;
-    bool found;
-
-    void readerAction(QString elementText);
-
-    void handleElementText(QString &elementText);
-    void closePacketInfo();
-    void writePacketInfo();
-    void reinitialize();
-};
+#include "observers.h"
+#include "packetparser.h"
 
 class XmlServer
 {
 public:
-    XmlServer(XmlFilter *xmlFilter);
+    XmlServer();
     ~XmlServer();
 
+    PacketParser *parser;
+
     void load(QString xmlContent, std::set<ipAddress> addr);
+    void loadFolder(QString folderName, const QStringList &fileNames);
     bool search(SearchCommand command);
     void changeText(bool forward);
     void setTitle(QString t) {title = t; changed = true;}
@@ -60,18 +40,24 @@ public:
 
     bool change() {return changed;}
 
+    bool copy(const QString &destination);
+
     void clear();
+
+    bool isEmpty() {return empty;}
 
     void setSniffed(const QStringList &slices);
 
     const QStringList &getSliceNames() {return sliceNames;}
 
 private:
+    bool folderLoaded;
+    QString folderName;
+
     QStringList sliceNames;
 
-    XmlFilter *filter;
-
     bool changed;
+    bool empty;
 
     std::set<ipAddress> addresses;
 

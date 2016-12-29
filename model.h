@@ -23,6 +23,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "sniffthread.h"
 #include "xmlserver.h"
 #include "view.h"
+#include "packetparser.h"
 
 
 class ViewModel : public serverObserver {
@@ -31,7 +32,9 @@ public:
         statisticsAttached = false;
     }
 
-    void update(const Settings &set);
+    void setBytePlot(bool b);
+    void setPacketPlot(bool b);
+    void update(const viewSettings &set);
     void update(const serverState &state) {
         view->update(state);
         if (statisticsAttached)
@@ -43,11 +46,12 @@ public:
 
     void attachStatistics(bool attached) {statisticsAttached = attached;}
 
+    DatabaseView *view;
+
 private:
     bool statisticsAttached;
-    ViewComposition composition;
-    Settings setting;
-    DatabaseView *view;
+    parseInstruction instruction;
+
     StatisticsView *statisticsView;
 };
 
@@ -66,20 +70,21 @@ public:
     void clear(QString title = "New");
     bool load(QString filename);
     bool loadSlice(QString slicename);
+    bool loadFolder(QString folderName);
     bool save(QString fileName);
+
+    bool isEmpty() {return server->isEmpty();}
 
     void update(const sniffState &state);
 
     const QStringList &getSliceNames() {return server->getSliceNames();}
 
+    PacketParser *parser;
 private:
     XmlServer *server;
 
     bool blockedBySniffThread;
     std::vector<serverObserver*> observers;
-
-    XmlFilter filter;
-    AddressExtractor extractor;
 
     void notifyObservers(bool force = false);
 
@@ -88,7 +93,7 @@ private:
     bool searchInFiles(SearchCommand &command);
     bool getSearchResults(SearchCommand &command, QStringList &results);
     void joinXml(QStringList &xmlData, QString &joined);
-    bool loadXml(QString &xmlContent);
+    bool loadXml(const QString &xmlContent);
 };
 
 class Model {
@@ -96,11 +101,19 @@ public:
     Model() {
         server.registerObserver(&view);
         sniff.registerObserver(&server);
+        sniff.parser = &parser;
+
+        std::vector<ipAddress> localAddresses;
+        sniff.devs.getLocalIpAddresses(0,localAddresses);
+        parser.update(localAddresses);
+
+        server.parser = &parser;
     }
 
     ViewModel view;
     ServerModel server;
     SniffThread sniff;
+    PacketParser parser;
 };
 
 #endif // MODEL_H

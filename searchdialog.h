@@ -31,13 +31,13 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "util.h"
 
 
-class SearchDialog : public QDialog/*, public serverObserver, public SniffObserver*/
+class SearchDialog : public QDialog
 {
     Q_OBJECT
 public:
     explicit SearchDialog(SearchStrategy *strtgy, QWidget *parent = 0);
 
-    void update(const Settings &set) {setting = set;}
+    void update(const viewSettings &set) {setting = set;}
 
     SearchStrategy *strategy;
 
@@ -54,7 +54,7 @@ private:
 
     int addressIndex, nameIndex;
 
-    Settings setting;
+    viewSettings setting;
 
     void setCommand(SearchCommand &command);
 

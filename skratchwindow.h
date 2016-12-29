@@ -20,6 +20,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QMainWindow>
 #include "menubar.h"
+#include "toolbar.h"
 #include "model.h"
 #include "displaytab.h"
 #include "controller.h"
@@ -34,6 +35,7 @@ public:
     void update(const sniffState &state);
 private:
     MenuBar *menuBar;
+    ToolBar *toolBar;
     QDialog *center;
 
     StringFactory factory;
@@ -42,26 +44,20 @@ private:
     DisplayTab *overView;
     Controller *controller;
 
-    /*QLabel *sliceLabel;
-    QComboBox *sliceBox;
-    QPushButton *sliceButton;*/
-
     QComboBox *devCombo;
     QPushButton *runBut;
 
     void generateCenter(Model *model);
     void generateSniffThreadControll(QVBoxLayout *vert, Devices &devs);
-    //void generateSliceSection(QVBoxLayout *vert);
-    void connectSignalsAndSlots();
+    void connectSignalsAndSlots(Controller *c);
 
     void updateSniffStart(const sniffState &state);
     void updateSniffStop(const sniffState &state);
-    //void setSliceItemsVisible(bool visible);
 
 private slots:
     void execute(CommandCode command);
     void getHelp(CommandCode code);
-    //void loadSlice();
+    void changeDevice(int i);
     void handleRunButton();
 };
 

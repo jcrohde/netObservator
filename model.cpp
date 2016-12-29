@@ -18,15 +18,24 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include "model.h"
 #include <QBuffer>
+#include <QTextStream>
 
-void ViewModel::update(const Settings &set) {
-    setting = set;
-    view->update(set);
+void ViewModel::setBytePlot(bool b) {
+    instruction.plotByteNumber = b;
+}
+
+void ViewModel::setPacketPlot(bool b) {
+    instruction.plotPacketNumber = b;
+}
+
+void ViewModel::update(const viewSettings &set) {
+    instruction.settings = set;
+    view->update(instruction);
 }
 
 void ViewModel::set(DatabaseView *v) {
     view = v;
-    view->getSettings(setting);
+    view->getSettings(instruction);
 }
 
 void ServerModel::set(XmlServer *s) {
@@ -55,12 +64,12 @@ void ServerModel::notifyObservers(bool force) {
 bool ServerModel::search(SearchCommand &command) {
     if (command.inFiles) {
         searchInFiles(command);
-        server->setTitle("searched in files");
+        //server->setTitle("searched in files");
     }
     else {
         server->search(command);
-    }
-    notifyObservers();
+        notifyObservers();
+    } 
     return true;
 }
 
@@ -76,6 +85,22 @@ void ServerModel::load(QString xmlContent, std::set<ipAddress> addr) {
     notifyObservers();
 }
 
+bool ServerModel::loadFolder(QString folderName) {
+
+    QStringList names;
+    getPcapFileNames(folderName,names);
+
+    if (names.size() > 0) {
+        server->setTitle(folderName);
+        server->loadFolder(folderName, names);
+        loadXml(names.at(0));
+        notifyObservers();
+        return true;
+    }
+
+    return false;
+}
+
 void ServerModel::clear(QString title) {
     server->clear();
     server->setTitle(title);
@@ -88,35 +113,21 @@ void ServerModel::update(const sniffState &state) {
         clear("Sniffing");
     }
     else if (!state.sniffing) {
-        server->clear();
-        server->setSniffed(state.sliceNames);
-        server->setTitle("Sniffed");
         blockedBySniffThread = false;
-        if (state.sliceNames.size() > 0)
-            loadSlice(state.sliceNames[0]);
-        else
-            clear("Sniffed");
+        loadFolder(state.folderName);
     }
 }
 
 bool ServerModel::load(QString filename) {
     bool valid = true;
 
-    QFile file(filename);
-    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-        QString content = QString::fromUtf8(file.readAll());
-        server->clear();
-        if (loadXml(content)) {
-            server->setTitle(filename);
-            notifyObservers();
-        }
-        else {
-            setErrorMessage("Can not open the file " + filename, QMessageBox::Critical);
-            valid = false;
-        }
-        file.close();
+    server->clear();
+    if (loadXml(filename)) {
+        server->setTitle(filename);
+        notifyObservers();
+
     }
-    else valid = (filename.size() == 0);
+    valid = (filename.size() == 0);
 
     return valid;
 }
@@ -124,28 +135,32 @@ bool ServerModel::load(QString filename) {
 bool ServerModel::loadSlice(QString slicename) {
     bool valid = true;
 
-    QFile file(slicename);
-    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-        QString content = QString::fromUtf8(file.readAll());
-        if (loadXml(content)) {
-            notifyObservers();
-        }
-        else {
-            setErrorMessage("Can not open the file " + slicename, QMessageBox::Critical);
-            valid = false;
-        }
-        file.close();
+    if (loadXml(slicename)) {
+        notifyObservers();
     }
-    else valid = (slicename.size() == 0);
+    else {
+        setErrorMessage("Can not open the file " + slicename, QMessageBox::Critical);
+        valid = false;
+    }
 
     return valid;
 }
 
 bool ServerModel::save(QString fileName) {
-    QFile file(fileName);
+    bool valid = server->copy(fileName);
+    /*QFile file(server->getContent());
 
-    QString content = server->getContent();
-    if (content.size() == 0) {
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        QTextStream stream(&file);
+        QFile destination(fileName);
+        if (destination.open(QIODevice::WriteOnly|QIODevice::Text)) {
+            destination.write(stream.readAll().toUtf8());
+            destination.close();
+            valid = true;
+        }
+        file.close();
+    }*/
+    /*if (content.size() == 0) {
         setErrorMessage(QString("No sniffed information to save."),QMessageBox::Warning);
         return true;
     }
@@ -154,21 +169,20 @@ bool ServerModel::save(QString fileName) {
         file.write(content.toUtf8());
         file.close();
         return true;
-    }
+    }*/
 
-    setErrorMessage("Can not write on the file " + fileName, QMessageBox::Critical);
-    return false;
+    if (!valid)
+        setErrorMessage("Can not write on the file " + fileName, QMessageBox::Critical);
+    return valid;
 }
 
 bool ServerModel::searchInFiles(SearchCommand &command) {
-    QString finalResult;
-    QStringList results;
-    bool valid = true;
+    parser->setSearchCommand(command);
+    parser->executeParseloop(command.filenames);
 
-    valid = valid && getSearchResults(command,results);
-    if (valid) joinXml(results, finalResult);
-    if (valid) server->clear();
-    return valid && loadXml(finalResult);
+    QString str = command.filenames.at(command.filenames.size()-1);
+    str = str.left(str.lastIndexOf("/")) + "/Search";
+    return loadFolder(str);
 }
 
 bool ServerModel::getSearchResults(SearchCommand &command, QStringList &results) {
@@ -178,9 +192,7 @@ bool ServerModel::getSearchResults(SearchCommand &command, QStringList &results)
     for (int i = 0; i < command.filenames.size() && valid; i++) {
         QFile file(command.filenames.at(i));
         if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-            QString content = QString::fromUtf8(file.readAll());
             QString result;
-            valid = valid && filter.generateFilteredXmlDocument(command,content,result);
             if (valid) results.append(result);
             file.close();
         }
@@ -208,12 +220,12 @@ void ServerModel::joinXml(QStringList &xmlData, QString &joined) {
     }
 }
 
-bool ServerModel::loadXml(QString &xmlContent) {
+bool ServerModel::loadXml(const QString &xmlContent) {
     std::set<ipAddress> addr;
-    bool valid =  extractor.extract(xmlContent,addr);
-    if (valid)
-        server->load(xmlContent,addr);
-    return valid;
+
+    parser->extract(xmlContent,addr);
+    server->load(xmlContent,addr);
+    return true;
 }
 
 

@@ -19,35 +19,17 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QFile>
 #include "view.h"
 
-void ViewXmlReader::read(QString XmlContent, PacketInfoPresenter *&packetInfo) {
-    presenter = packetInfo;
-    column = 0;
-
-    XmlReader::read(XmlContent);
-}
-
-void ViewXmlReader::readerAction(QString elementText) {
-    content[column] = elementText;
-    accountRowsAndColumns();
-}
-
-void ViewXmlReader::accountRowsAndColumns() {
-    if (column == COLUMNNUMBER - 1) {
-        presenter->show(content);
-        column = 0;
-    }
-    else
-        column++;
-}
-
-/*--------------------------------------------------------------------------*/
-
 void View::update(const serverState &state) {
+    if (state.blockedBySniffThread)
+        instruction.mode = Mode::FIRSTPACKET;
+    else
+        instruction.mode = Mode::ALL;
+
     rewriteInfo();
 }
 
-void View::update(const Settings &set) {
-    getSettings(set);
+void View::update(const parseInstruction &inst) {
+    getSettings(inst);
 
     rewriteInfo();
 }
@@ -57,7 +39,8 @@ void View::rewriteInfo() {
     QString xmlContent;
     getContent(xmlContent);
     if (xmlContent.size() > 0) {
-        xmlReader->read(xmlContent, packetInfo);
+        parser->setPacketInfoPresenter(packetInfo);
+        parser->parse(xmlContent, instruction);
     }
 }
 
@@ -67,15 +50,27 @@ void View::init() {
 
 /*--------------------------------------------------------------------------*/
 
-DatabaseView::DatabaseView(ViewXmlReader *reader) {
-    View::xmlReader=reader;
+void DatabaseView::rewriteInfo() {
+    init();
+    QString xmlContent;
+    getContent(xmlContent);
+    if (xmlContent.size() > 0) {
+        parseInstruction localInstruction = instruction;
+        localInstruction.plotByteNumber = localInstruction.plotPacketNumber = false;
+        parser->setPacketInfoPresenter(packetInfo);
+        parser->parse(xmlContent,localInstruction);
+    }
+    else if (instruction.mode == Mode::FIRSTPACKET)
+        parser->configure(instruction);
+}
+
+DatabaseView::DatabaseView() {
     packetInfo = &tablePacketInfo;
 }
 
 /*--------------------------------------------------------------------------*/
 
 StatisticsView::StatisticsView() {
-    xmlReader = &myXmlReader;
     packetInfo = &statisticsPacketInfo;
     COLUMN = PROTOCOL;
 }
@@ -105,26 +100,25 @@ void StatisticsView::update(column C) {
 }
 
 void StatisticsView::rewriteInfo() {
-    View::rewriteInfo();
-    statisticsPacketInfo.evaluate();
+    init();
+    QString xmlContent;
+    getContent(xmlContent);
+    if (xmlContent.size() > 0) {
+        instruction.mode = Mode::STATISTICS;
+        instruction.statisticsColumn = COLUMN;
+        parser->parse(xmlContent,instruction);
+    }
+    statisticsPacketInfo.evaluate(parser->getAppearance());
 }
 
 void StatisticsView::rewriteFileInfo() {
     init();
-    for (int i = 0; i < sliceNames.size(); i++) {
-        QFile file(sliceNames[i]);
-        if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-            QString content = QString::fromUtf8(file.readAll());
-            if (content.size() > 0)
-                xmlReader->read(content, packetInfo);
-            file.close();
-        }
-        else {
-            setErrorMessage("Can not open the file " + sliceNames[i], QMessageBox::Critical);
-            return;
-        }
-    }
-    statisticsPacketInfo.evaluate();
+
+    instruction.mode = Mode::STATISTICS;
+    instruction.statisticsColumn = COLUMN;
+    parser->configure(instruction);
+    parser->executeParseloop(sliceNames);
+    statisticsPacketInfo.evaluate(parser->getAppearance());
 }
 
 /*--------------------------------------------------------------------------*/
@@ -143,7 +137,6 @@ void TrafficView::update(const serverState &state) {
 void TrafficView::rewriteInfo() {
     if (sliceNames.size() == 0) {
         View::rewriteInfo();
-        trafficPacketInfo.evaluateLastPackets();
     }
     else
         rewriteFileInfo();
@@ -151,25 +144,21 @@ void TrafficView::rewriteInfo() {
 }
 
 TrafficView::TrafficView(TrafficPacketInfoPresenter::infoType type)
-    : trafficPacketInfo(type){
+    : trafficPacketInfo(type) {
     packetInfo = &trafficPacketInfo;
-    xmlReader = &r;
+    instruction.plotByteNumber = type == TrafficPacketInfoPresenter::infoType::BYTES;
+    instruction.plotPacketNumber = type == TrafficPacketInfoPresenter::infoType::PACKETS;
+
+    instruction.settings.shownColumns = 0;
+    for (int i = 0; i < COLUMNNUMBER; i++)
+        instruction.settings.showInfo[i] = false;
+
+    instruction.mode = Mode::ALL;
 }
 
 void TrafficView::rewriteFileInfo() {
     init();
-    for (int i = 0; i < sliceNames.size(); i++) {
-        QFile file(sliceNames[i]);
-        if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-            QString content = QString::fromUtf8(file.readAll());
-            if (content.size() > 0)
-                xmlReader->read(content, packetInfo);
-            file.close();
-        }
-        else {
-            setErrorMessage("Can not open the file " + sliceNames[i], QMessageBox::Critical);
-            return;
-        }
-    }
-    trafficPacketInfo.evaluateLastPackets();
+    parser->setPacketInfoPresenter(packetInfo);
+    parser->configure(instruction);
+    parser->executeParseloop(sliceNames);
 }

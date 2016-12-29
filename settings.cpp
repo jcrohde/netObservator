@@ -15,20 +15,30 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef MODELVIEW_H
-#define MODELVIEW_H
+#include "settings.h"
 
-#include "model.h"
-#include "view.h"
 
-struct modelView {
-    XmlServer model;
-    DatabaseView view;
-
-    modelView()
-        : view(), model() {
-        view.getContent = [&](QString &str) {str = model.getContent();};
+viewSettings::viewSettings() {
+    for (int i = 0; i < COLUMNNUMBER; i++) {
+        showInfo[i] = i == PROTOCOL || i == HOSTPORT || i == HOSTADDRESS;
     }
-};
 
-#endif // MODELVIEW_H
+    shownColumns = 3;
+}
+
+sniffSettings::sniffSettings() {
+    mode = Mode::SAVEANDSHOW;
+    duration = 20;
+    sliceFileName = "Slice";
+    storeFolderName = "Sniffed";
+    sliceSize = 1000;
+}
+
+QString onLocalOrSrc(QString str) {
+    if (str == LABEL[LOCALSRCADDRESS])
+        return "Local or SRC Address";
+    else if (str == LABEL[LOCALSRCPORT])
+        return "Local or SRC Port";
+    else
+        return str;
+}

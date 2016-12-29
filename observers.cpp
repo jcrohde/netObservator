@@ -15,20 +15,5 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef MODELVIEW_H
-#define MODELVIEW_H
+#include "observers.h"
 
-#include "model.h"
-#include "view.h"
-
-struct modelView {
-    XmlServer model;
-    DatabaseView view;
-
-    modelView()
-        : view(), model() {
-        view.getContent = [&](QString &str) {str = model.getContent();};
-    }
-};
-
-#endif // MODELVIEW_H

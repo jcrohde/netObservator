@@ -15,41 +15,42 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef DNSTHREAD_H
-#define DNSTHREAD_H
+#ifndef VIEWSETTINGSDIALOG_H
+#define VIEWSETTINGSDIALOG_H
 
-#include <condition_variable>
-#include <thread>
-#include <chrono>
-#include <functional>
-#include "ippacket.h"
+#include <QDialog>
+#include <QCheckBox>
+#include <QLabel>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include "settings.h"
 
-class DNSThread
+class ViewSettingsDialog : public QDialog
 {
+    Q_OBJECT
 public:
-    DNSThread();
-
-    void start(std::function<void(std::vector<addressItem>&,int&)> updFunc);
-    void stop();
+    explicit ViewSettingsDialog(QWidget *parent = 0);
 
 private:
-    std::function<void(std::vector<addressItem>&,int&)> update;
-    std::vector<addressItem> addresses;
 
-    std::condition_variable stopCondition;
-    std::mutex stopMutex;
+    QCheckBox boxes[COLUMNNUMBER];
+    QCheckBox *allBox;
 
-    volatile bool bRun;
-    std::thread thread;
+    QPushButton *okBut, *cancelBut;
 
-    time_t atLoopBegin, afterGettingNames;
+    viewSettings setting;
 
-    int count;
+    void generatePresentationSection(QVBoxLayout *settingLayout);
+    void generateButtonSection(QVBoxLayout *ordering);
+    void connectSignalsAndSlots();
 
-    void run();
-    void getHostNames();
-    QString getHostnameFromIp(ipAddress &addr);
-    void waitForLoopElapse();
+private slots:
+    void selectAll(bool selection);
+    void changeSettings();
+
+signals:
+    void change(viewSettings&);
 };
 
-#endif // DNSTHREAD_H
+#endif // VIEWSETTINGSDIALOG_H
+

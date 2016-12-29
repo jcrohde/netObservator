@@ -19,7 +19,6 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "searchdialog.h"
 #include "dnssingleton.h"
 
-
 SearchDialog::SearchDialog(SearchStrategy *strtgy, QWidget *parent)
     : strategy(strtgy), QDialog(parent)
 {
@@ -94,7 +93,7 @@ SearchDialog::SearchDialog(SearchStrategy *strtgy, QWidget *parent)
 
 void SearchDialog::setCommand(SearchCommand &command) {
     command.settings = setting;
-    command.columnName = columnBox->currentText();
+    command.column = columnBox->currentIndex();
     command.searchString = findEdit->text();
     command.invertMatch = invertBox->isChecked();
     command.mode = (SearchCommand::Mode) modeBox->currentIndex();
@@ -130,9 +129,6 @@ void SearchDialog::updateTableModel(const std::set<ipAddress> &addresses) {
     }
 }
 
-
-
-
 void SearchDialog::enlistColumnBox() {
     columnBox->clear();
 
@@ -148,8 +144,7 @@ void SearchDialog::enlistColumnBox() {
         }
     }
 
-    columnBox->addItem(ARBITRARY);
-    columnBox->setCurrentIndex(count);
+    columnBox->setCurrentIndex(0);
 
     int size = tableModel->rowCount();
     for (int i = 0; i < size; i++) {
@@ -186,6 +181,3 @@ void SearchDialog::setHost(const QModelIndex &index) {
         }
     }
 }
-
-
-

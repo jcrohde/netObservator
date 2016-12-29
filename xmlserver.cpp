@@ -16,69 +16,12 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "xmlserver.h"
+#include "util.h"
 
-bool XmlFilter::generateFilteredXmlDocument(const SearchCommand &cmd, QString &input, QString &output) {
-    writer.reset(new QXmlStreamWriter(&output));
-
-    command = cmd;
-    regexp = QRegExp(command.searchString);
-    reinitialize();
-
-    writer->writeStartDocument();
-    writer->writeStartElement(SNIFFED);
-    bool valid = read(input);
-    writer->writeEndElement();
-
-    return valid;
-}
-
-void XmlFilter::readerAction(QString elementText) {
-    handleElementText(elementText);
-    columnCount++;
-    if (columnCount == COLUMNNUMBER) {
-        closePacketInfo();
-    }
-}
-
-void XmlFilter::handleElementText(QString &elementText) {
-    subNodes.append(elementText);
-    if ((command.settings.showInfo[columnCount])
-      && (command.columnName == ARBITRARY || onLocalOrSrc(LABEL[columnCount]) == command.columnName)) {
-        if (command.mode == command.REGEX)
-            found = found || regexp.indexIn(elementText) != -1;
-        else if (command.mode == command.CASEINSENSITIVE)
-            found = found || elementText.contains(command.searchString,Qt::CaseInsensitive);
-        else
-            found = found || elementText.contains(command.searchString);
-    }
-}
-
-void XmlFilter::closePacketInfo() {
-    if (command.invertMatch)
-        found = !found;
-    if (found) {
-        writePacketInfo();
-    }
-    reinitialize();
-}
-
-void XmlFilter::writePacketInfo() {
-    writer->writeStartElement(PACKETINFO);
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        writer->writeTextElement(LABEL[i],subNodes[i]);
-    }
-    writer->writeEndElement();
-}
-
-void XmlFilter::reinitialize() {
-    found = false;
-    columnCount = 0;
-    subNodes.clear();
-}
-
-XmlServer::XmlServer(XmlFilter *xmlFilter) : filter(xmlFilter) {
+XmlServer::XmlServer() {
     title = "Title";
     changed = false;
+    empty = true;
     clear();
 }
 
@@ -91,16 +34,27 @@ void XmlServer::load(QString xmlContent, std::set<ipAddress> addr) {
         output[0] = xmlContent;
     addresses = addr;
     changed = true;
+    empty = false;
+}
+
+void XmlServer::loadFolder(QString folderName, const QStringList &fileNames) {
+    folderLoaded = true;
+    this->folderName = folderName;
+    sliceNames = fileNames;
+
 }
 
 bool XmlServer::search(SearchCommand cmd) {
     QString result;
 
-    bool valid = filter->generateFilteredXmlDocument(cmd,output[currentOutputIter],result);
+    bool valid = true;
+    parser->search(title,cmd);
 
     if (valid) {
-        setAsLastDocument(result);
-        title += "->search";
+        title = title.left(title.size() - 5) + "Search.pcap";
+        title = title.left(title.lastIndexOf("/")) + "/Search/" + title.right(title.size()-title.lastIndexOf("/")-1);
+        setAsLastDocument(title);
+
         changed = true;
     }
 
@@ -109,13 +63,12 @@ bool XmlServer::search(SearchCommand cmd) {
 
 void XmlServer::changeText(bool forward) {
     if (forward) {
-        currentOutputIter++;
-        title += "->search";
+        currentOutputIter++;  
     }
     else {
         currentOutputIter--;
-        title = title.left(title.lastIndexOf("->search"));
     }
+    title = output[currentOutputIter];
     changed = true;
 }
 
@@ -125,17 +78,32 @@ void XmlServer::getState(serverState &state) {
     state.addresses = addresses;
     state.title = title;
     state.sliceNames = sliceNames;
+    state.empty = empty;
 
     changed = false;
+}
+
+bool XmlServer::copy(const QString &destination) {
+    bool valid = true;
+
+    parseInstruction instruction;
+    instruction.mode = Mode::COPY;
+    instruction.destination = destination;
+
+    parser->parse(title,instruction);
+
+    return valid;
 }
 
 void XmlServer::clear() {
     output.clear();
     currentOutputIter = 0;
-    output.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><"+SNIFFED+"></"+SNIFFED+">");
+    output.append("");
     changed = true;
     sliceNames.clear();
     addresses.clear();
+    empty = true;
+    folderLoaded = false;
 }
 
 void XmlServer::setAsLastDocument(QString &document) {

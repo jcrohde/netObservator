@@ -40,13 +40,9 @@ void TablePacketInfoPresenter::show(QString *content) {
 void TablePacketInfoPresenter::show(QString *content, colorCode direction) {
     setBackGround(direction);
 
-    column = 0;
     row = display.tableModel->rowCount();
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        if (setting.showInfo[i]) {
-            showAttribute(column,content[i]);
-            column++;
-        }
+    for (int i = 0; i < setting.shownColumns; i++) {
+        showAttribute(i,content[i]);
     }
 }
 
@@ -185,10 +181,25 @@ void StatisticsPacketInfoPresenter::init() {
     display.tableModel->setRowCount(0);
 }
 
-void StatisticsPacketInfoPresenter::evaluate() {
+void StatisticsPacketInfoPresenter::evaluate(const std::map<QString,std::vector<long int> > &data) {
     std::vector<sizedPair> pairs;
 
-    for (auto iter = appearance.begin(); iter != appearance.end(); ++ iter) {
+    timeBegin = timeEnd = 0;
+    totalNumber = 0;
+
+    for (auto iter = data.begin(); iter != data.end(); ++ iter) {
+        totalNumber += iter->second.size();
+        if (timeEnd == 0) {
+            timeBegin = iter->second[0];
+            timeEnd = iter->second[iter->second.size()-1];
+        }
+        else {
+            if (timeBegin > iter->second[0])
+                timeBegin = iter->second[0];
+
+            if (timeEnd < iter->second[iter->second.size()-1])
+                timeEnd = iter->second[iter->second.size()-1];
+        }
         sizedPair pair;
         pair.value.first = iter->first;
         pair.value.second = iter->second;
@@ -243,4 +254,5 @@ void TrafficPacketInfoPresenter::evaluateLastPackets() {
 void TrafficPacketInfoPresenter::init() {
     timeStamp = 0;
     packetNumber = 0;
+    evaluatePacketsOfSecond(0,0);
 }

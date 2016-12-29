@@ -15,20 +15,49 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef MODELVIEW_H
-#define MODELVIEW_H
+#ifndef COMMAND_H
+#define COMMAND_H
 
-#include "model.h"
-#include "view.h"
+#include <QStringList>
 
-struct modelView {
-    XmlServer model;
-    DatabaseView view;
+enum class CommandCode {
+    CLEAR,
+    LOAD,
+    LOADFILE,
+    LOADFOLDER,
+    SAVEFILEAS,
+    SAVEFILE,
 
-    modelView()
-        : view(), model() {
-        view.getContent = [&](QString &str) {str = model.getContent();};
-    }
+    LOADSLICE,
+
+    ADDTAB,
+
+    BACK,
+    FORWARD,
+
+    SHOWPACKETFILTEREDITOR,
+
+    SHOWSTATISTICSDIALOG,
+    SHOWTRAFFICDIALOG,
+    SHOWBYTEDIALOG,
+    SHOWCOLUMNSETTINGSDIALOG,
+
+    SHOWSETTINGSDIALOG,
+
+    SHOWSEARCHTABDIALOG,
+    SHOWSEARCHFILEDIALOG,
+
+    SNIFF,
+    CHANGEDEVICE,
+
+    HELP,
+    LICENSE,
+    ABOUT
 };
 
-#endif // MODELVIEW_H
+struct Command {
+    CommandCode code;
+    QStringList arguments;
+};
+
+#endif // COMMAND_H

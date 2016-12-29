@@ -25,7 +25,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QPushButton>
 #include <QGridLayout>
 #include <functional>
-#include "util.h"
+#include "ippacket.h"
+#include "settings.h"
+#include "observers.h"
 
 class SearchStrategy : public QHBoxLayout
 {

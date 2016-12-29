@@ -17,6 +17,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QIcon>
 #include "searchstrategy.h"
+#include "util.h"
 
 SearchOnTabStrategy::SearchOnTabStrategy() {
     backBut = new QPushButton(QIcon("icons/back.png"),"");
@@ -65,7 +66,10 @@ SearchOnFilesStrategy::SearchOnFilesStrategy() {
 void SearchOnFilesStrategy::update(const sniffState &state) {
     if (state.valid && !state.sniffing) {
         updateDisplay(state.addresses);
-        setFilesForSearch(state.sliceNames);
+
+        QStringList names;
+        getPcapFileNames(state.folderName,names);
+        setFilesForSearch(names);
     }
 }
 
@@ -99,7 +103,7 @@ void SearchOnFilesStrategy::selectFiles() {
         NULL,
         tr("Search in Files"),
         QDir::currentPath(),
-        tr("XML (*.xml)") );
+        tr("pcap (*.pcap)") );
 
     if (filenames.size() > 0) {
         QString files = filenames.at(0);

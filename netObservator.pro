@@ -18,7 +18,6 @@ SOURCES += main.cpp \
     stringfactory.cpp \
     intaction.cpp \
     settingsdialog.cpp \
-    xmlreader.cpp \
     searchdialog.cpp \
     util.cpp \
     devices.cpp \
@@ -33,7 +32,15 @@ SOURCES += main.cpp \
     xmlserver.cpp \
     searchstrategy.cpp \
     viewdialog.cpp \
-    trafficdialog.cpp
+    trafficdialog.cpp \
+    toolbar.cpp \
+    packetparser.cpp \
+    settings.cpp \
+    ippacket.cpp \
+    observers.cpp \
+    command.cpp \
+    viewsettingsdialog.cpp \
+    parsescheme.cpp
 
 
 INCLUDEPATH += ../WpdPack/Include \
@@ -54,7 +61,6 @@ HEADERS += \
     stringfactory.h \
     intaction.h \
     settingsdialog.h \
-    xmlreader.h \
     searchdialog.h \
     util.h \
     devices.h \
@@ -70,4 +76,13 @@ HEADERS += \
     xmlserver.h \
     searchstrategy.h \
     viewdialog.h \
-    trafficdialog.h
+    trafficdialog.h \
+    toolbar.h \
+    packetparser.h \
+    settings.h \
+    ippacket.h \
+    observers.h \
+    command.h \
+    viewsettingsdialog.h \
+    viewsettingsdialog.h \
+    parsescheme.h

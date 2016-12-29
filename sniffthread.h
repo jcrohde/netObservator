@@ -22,8 +22,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <thread>
 #include <set>
 #include "devices.h"
-#include "dnssingleton.h"
-#include "packetinfopresenter.h"
+
+#include "packetparser.h"
+#include "observers.h"
 
 class SniffThread
 {
@@ -33,23 +34,27 @@ public:
     SniffThread() {bRun = false;}
     ~SniffThread();
 
-    std::function<void(traffic&)> firePacketNumber;
-    std::function<void(traffic&)> fireByteNumber;
-
     void registerObserver(SniffObserver *observer) {observers.push_back(observer);}
     void unregisterObserver(SniffObserver *observer);
 
     void start(int deviceNumber);
     bool stop();
 
-    void setPacketInfoPresenter(TablePacketInfoPresenter *presenter) {packetInfo = presenter;}
+    PacketParser *parser;
+
     void setFilter(QString filter) {filterString = filter;}
-    void update(const Settings &set) {setting = set;}
+
+    void update(const sniffSettings &settings) {
+        this->settings = settings;
+    }
 
     bool isSniffing() {return bRun;}
 
 private:
-    Settings setting;
+    sniffSettings settings;
+    QString currentStoreFolderName;
+
+    pcap_dumper_t *dumpfile;
 
     std::vector<SniffObserver*> observers;
 
@@ -58,8 +63,6 @@ private:
     QStandardItemModel *display;
 
     QString errorStr;
-
-    TablePacketInfoPresenter *packetInfo;
 
     char errorBuffer[PCAP_ERRBUF_SIZE];
 
@@ -72,17 +75,10 @@ private:
     std::vector<addressItem> addresses;
     std::vector<ipAddress> localAddresses;
 
-    std::set<ipAddress> seenAdresses;
-
-    ipAddress currentHome, localIP;
-    u_short hostPort, localPort;
     long int currentTimeInSeconds, lastTime;
 
     traffic data, bytes;
     int counter, sliceNumber, packetNumber;
-    bool foundNew, incoming;
-
-    QString content[COLUMNNUMBER];
 
     void notifyObservers();
 
@@ -94,18 +90,10 @@ private:
 
     void handlePacket(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache);
 
-    void getPacketInfo(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache);
-    void getTimeString();
-    bool updateConnectedAddresses(ipAddress &addr, DNSsingleton &cache);
-    bool getConnectedAddressInfo(ipHeader *ih,udpHeader *uh, DNSsingleton &cache);
-    void getProtocol(ipHeader *ih);
-    void readPacket(const struct pcap_pkthdr *header,const u_char *packetData);
 
-    void presentPacketInfo();
-    void killOldEntries();
-    void storePacketInfo();
+    void storePacketInfo(const struct pcap_pkthdr *header,const u_char *packetData);
 
-    void generateSlice();
+    void generateSlice(pcap_t*& handle);
 };
 
 #endif // SNIFFTHREAD_H

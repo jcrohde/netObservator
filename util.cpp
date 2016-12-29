@@ -17,61 +17,10 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QIcon>
 #include "util.h"
-
-Settings::Settings() {
-    for (int i = 0; i < COLUMNNUMBER; i++) {
-        showInfo[i] = i == PROTOCOL || i == HOSTPORT || i == HOSTADDRESS;
-    }
-
-    save = true;
-    duration = 20;
-    sliceFileName = "Slice";
-    sliceSize = 1000;
-}
-
-ipAddress::ipAddress(QString str) {
-    getByteFromString(byte1, str);
-    getByteFromString(byte2, str);
-    getByteFromString(byte3, str);
-
-    byte4 = str.toInt();
-}
-
-void ipAddress::getByteFromString(u_char &byte, QString &str) {
-    byte = str.left(str.indexOf(".")).toInt();
-    str = str.right(str.size()-str.indexOf(".")-1);
-}
-
-unsigned int ipAddress::length(u_char byte) const {
-    if (byte < 10) return 1;
-    else if (byte <100) return 2;
-    else return 3;
-}
-
-void ipAddress::print(char *&str) const {
-    int size = length(byte1)+length(byte2)+length(byte3)+length(byte4)+4;
-    str = (char*) malloc(size);
-    sprintf(str,"%d.%d.%d.%d",byte1,byte2,byte3,byte4);
-}
-
-QString ipAddress::toQString() const {
-    char *c;
-    print(c);
-    QString res(c);
-    free(c);
-    return res;
-}
+#include <QDir>
+#include <QFileInfoList>
 
 std::mutex myCellMutex;
-
-QString onLocalOrSrc(QString str) {
-    if (str == LABEL[LOCALSRCADDRESS])
-        return "Local or SRC Address";
-    else if (str == LABEL[LOCALSRCPORT])
-        return "Local or SRC Port";
-    else
-        return str;
-}
 
 QString escape(QString content) {
     content.replace(QString("<"),QString("&lt;"));
@@ -100,4 +49,16 @@ void setErrorMessage(QString message,QMessageBox::Icon icon) {
     box.setText(message);
     box.setWindowFlags(box.windowFlags() | Qt::WindowStaysOnTopHint);
     box.exec();
+}
+
+void getPcapFileNames(const QString &folderName, QStringList &fileNames) {
+    fileNames.clear();
+
+    QDir dir(folderName);
+    QFileInfoList list = dir.entryInfoList();
+
+    for (int i = 0; i < list.size(); i++) {
+        if (list.at(i).fileName().contains(".pcap"))
+            fileNames.append(list.at(i).absoluteFilePath());
+    }
 }

@@ -19,6 +19,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "time.h"
 #include <ws2tcpip.h>
 
+static const unsigned int SECONDSPERDAY = 86400;
+
 DNSThread::DNSThread()
 {
 

@@ -16,6 +16,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "devices.h"
+#include "util.h"
 
 Devices::Devices()
 {

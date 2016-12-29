@@ -16,44 +16,35 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include <QVBoxLayout>
-#include "util.h"
+#include "observers.h"
 #include "packetinfopresenter.h"
-#include "xmlreader.h"
+#include "packetparser.h"
 
 #ifndef VIEW_H
 #define VIEW_H
-
-class ViewXmlReader : private XmlReader {
-public:
-    void read(QString XmlContent, PacketInfoPresenter *&packetInfo);
-
-private:
-    void readerAction(QString elementText);
-    void accountRowsAndColumns();
-
-    PacketInfoPresenter *presenter;
-    int column;
-    QString content[COLUMNNUMBER];
-};
 
 /*--------------------------------------------------------------------------*/
 
 class View : public serverObserver {
 public:
+
+    PacketParser *parser;
+
     std::function<void(QString&)> getContent;
 
     virtual void update(const serverState &state);
-    void update(const Settings &set);
-    void getSettings(const Settings &set) {setting = set; packetInfo->update(set);}
+    void update(const parseInstruction &inst);
+    void getSettings(const parseInstruction &inst) {instruction = inst; packetInfo->update(instruction.settings);}
 
     PacketInfoPresenter *packetInfo;
 
 protected:
-    Settings setting;
+    parseInstruction instruction;
+
 
     virtual void rewriteInfo();
     virtual void init();
-    ViewXmlReader *xmlReader;
+    //ViewXmlReader *xmlReader;
 };
 
 /*--------------------------------------------------------------------------*/
@@ -61,8 +52,10 @@ protected:
 class DatabaseView : public View
 {
 public:
-    DatabaseView(ViewXmlReader *reader);
+    DatabaseView();
     ~DatabaseView() {}
+
+    void rewriteInfo();
 
     void compose(ViewComposition composition);
     TablePacketInfoPresenter tablePacketInfo;
@@ -90,8 +83,6 @@ private:
     column COLUMN;
     QStringList sliceNames;
 
-    ViewXmlReader myXmlReader;
-
     void rewriteFileInfo();
 };
 
@@ -111,7 +102,6 @@ public:
 
 private:
     TrafficPacketInfoPresenter trafficPacketInfo;
-    ViewXmlReader r;
 
     QStringList sliceNames;
 

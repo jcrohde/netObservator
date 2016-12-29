@@ -20,7 +20,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QString>
 #include <QList>
-#include "util.h"
+#include "ippacket.h"
 
 class Devices
 {

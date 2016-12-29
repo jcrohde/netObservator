@@ -29,6 +29,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "devices.h"
 #include "sniffthread.h"
 #include "trafficdialog.h"
+#include "command.h"
+#include "viewsettingsdialog.h"
+#include "settings.h"
 #include <memory>
 
 class Controller : public QWidget
@@ -44,6 +47,7 @@ private:
     QString lastSavedFileName;
 
     SettingsDialog *settings;
+    ViewSettingsDialog *viewSettingsDialog;
     StatisticsDialog *statisticsDialog;
     TrafficDialog *packetTrafficDialog, *byteTrafficDialog;
     SearchDialog *searchTabDialog;
@@ -61,6 +65,7 @@ private:
     bool isSomeDialogOpened();
 
     void load();
+    void loadFolder();
     void saveFile();
     void saveFileAs();
     void handleSniffing(Command cmd);
@@ -71,7 +76,8 @@ public slots:
 private slots:
     void search(SearchCommand &command);
     void changeText(bool forward);
-    void getSettings(Settings &set);
+    void getSettings(viewSettings &settings);
+    void getSniffSettings(sniffSettings &settings);
     void getComposition(ViewComposition &composition);
     void getFilter(QString str) {model->sniff.setFilter(str);}
     void removeStatisticsView() {model->view.attachStatistics(false);}
@@ -81,6 +87,7 @@ private slots:
 signals:
     void packets(int);
     void bytes(int);
+    void addTab();
 };
 
 #endif // CONTROLLER_H

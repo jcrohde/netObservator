@@ -25,12 +25,17 @@ MainWindow::MainWindow(Controller *c, Model *model, QWidget *parent)
 
     menuBar = new MenuBar;
     setMenuBar(menuBar);
+    model->server.registerObserver(menuBar);
+
+    toolBar = new ToolBar;
+    addToolBar(toolBar);
+    model->server.registerObserver(toolBar);
 
     help = new HelpDialog;
 
     generateCenter(model);
 
-    connectSignalsAndSlots();
+    connectSignalsAndSlots(c);
 }
 
 void MainWindow::update(const sniffState &state) {
@@ -82,16 +87,20 @@ void MainWindow::generateSniffThreadControll(QVBoxLayout *vert, Devices &devs) {
     vert->addLayout(horizontal);
 }
 
-void MainWindow::connectSignalsAndSlots() {
+void MainWindow::connectSignalsAndSlots(Controller *c) {
     QObject::connect(menuBar,SIGNAL(sendCommand(CommandCode)),this,SLOT(execute(CommandCode)));
+    QObject::connect(toolBar,SIGNAL(send(CommandCode)),this,SLOT(execute(CommandCode)));
 
     QObject::connect(menuBar->closeAction,SIGNAL(triggered()),this,SLOT(close()));
 
     QObject::connect(runBut, SIGNAL (clicked()),this, SLOT (handleRunButton()));
+    QObject::connect(devCombo,SIGNAL(currentIndexChanged(int)),this,SLOT(changeDevice(int)));
 
     QObject::connect(this->menuBar->hintAction,SIGNAL(sigCode(CommandCode)),this,SLOT(getHelp(CommandCode)));
     QObject::connect(this->menuBar->licenseAction,SIGNAL(sigCode(CommandCode)),this,SLOT(getHelp(CommandCode)));
     QObject::connect(this->menuBar->authorAction,SIGNAL(sigCode(CommandCode)),this,SLOT(getHelp(CommandCode)));
+
+    QObject::connect(controller,SIGNAL(addTab()),overView,SLOT(add()));
 }
 
 void MainWindow::updateSniffStart(const sniffState &state) {
@@ -129,6 +138,13 @@ void MainWindow::getHelp(CommandCode code) {
     help->setWindowTitle(factory.getTitleFromKey(key));
     help->load(helpInfo);
     help->show();
+}
+
+void MainWindow::changeDevice(int i) {
+    Command cmd;
+    cmd.arguments.append(QString::number(i));
+    cmd.code = CommandCode::CHANGEDEVICE;
+    controller->getCommand(cmd);
 }
 
 void MainWindow::handleRunButton() {

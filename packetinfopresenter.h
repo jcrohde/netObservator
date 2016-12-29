@@ -21,6 +21,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QTableView>
 #include <QStandardItemModel>
 #include <QTextEdit>
+#include "settings.h"
 #include "util.h"
 
 struct DisplayTableView {
@@ -42,12 +43,12 @@ public:
 
     DisplayTableView display;
 
-    void update(const Settings &set) {setting = set;}
+    void update(const viewSettings &set) {setting = set;}
     virtual void show(QString *content) = 0;
     virtual void init() = 0;
 
 protected:
-    Settings setting;
+    viewSettings setting;
 };
 
 /*--------------------------------------------------------------------------*/
@@ -123,7 +124,7 @@ public:
     void init(column C);
     void init();
 
-    void evaluate();
+    void evaluate(const std::map<QString,std::vector<long int> > &data);
 
 private:
     int totalNumber;

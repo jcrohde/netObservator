@@ -27,15 +27,8 @@ DisplayTab::DisplayTab(Controller *c)
     add();
     setToCurrentTab(0);
 
-    toolButton = new QToolButton(this);
-    toolButton->setText("+");
-    toolButton->setCursor(Qt::ArrowCursor);
-    toolButton->setAutoRaise(true);
-    setCornerWidget(toolButton,Qt::TopLeftCorner);
-
     setTabsClosable(true);
 
-    connect(toolButton,SIGNAL(clicked(bool)),this,SLOT(add()));
     connect(this,SIGNAL(tabCloseRequested(int)),this,SLOT(closeTab(int)));
     connect(this,SIGNAL(currentChanged(int)),this,SLOT(setToCurrentTab(int)));
 }
@@ -56,7 +49,7 @@ void DisplayTab::updateController(int index) {
 
 void DisplayTab::add() {
     if (!fixed) {
-        Page *page = new Page(&reader,&filter);
+        Page *page = new Page();
 
         displayCount++;
         addTab(page,"Display " + QString::number(displayCount));

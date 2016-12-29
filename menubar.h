@@ -20,9 +20,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QMenuBar>
 #include "intaction.h"
-#include "util.h"
+#include "observers.h"
 
-class MenuBar : public QMenuBar
+class MenuBar : public QMenuBar, public serverObserver
 {
     Q_OBJECT
 
@@ -34,13 +34,16 @@ public:
     QMenu *helpMenu;
 
     intAction *newAction;
+    intAction *clearAction;
     intAction *openAction;
+    intAction *folderAction;
     QAction *closeAction;
     intAction *saveAction;
     intAction *saveAsAction;
 
     intAction *filterAction;
 
+    intAction *tableAction;
     intAction *statisticsAction;
     intAction *trafficAction;
     intAction *byteAction;
@@ -56,6 +59,8 @@ public:
 
     explicit MenuBar(QMenuBar *parent = 0);
     ~MenuBar();
+
+    void update(const serverState &state);
 
 private:
 
