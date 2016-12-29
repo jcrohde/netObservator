@@ -51,8 +51,8 @@ with the installer you got with this package.
 
                        GENERAL INFORMATION
 
-netObservator is a simple to use sniffer app. The goal is to give you information
-about the connections of your computer.
+netObservator is a simple to use sniffer app. The goal is to give you
+information about the connections of your computer.
 
 When you start to sniff, only information about the first packet of a
 connection with another host will be displayed. This information will
@@ -61,7 +61,7 @@ sniffed. This will give you an overview of the hosts you are currently
 connected with.
 
 After sniffing information about all packets can be displayed and stored in
-XML files. These slices can be displayed after sniffing.
+.pcap files. These slices can be displayed after sniffing.
 
 You can search on these files and visualize information you have got by
 sniffing. Moreover you can also edit filters for sniffing.
