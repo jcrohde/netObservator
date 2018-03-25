@@ -50,7 +50,7 @@ void ServerModel::unregisterObserver(serverObserver *observer) {
 }
 
 void ServerModel::notifyObservers(bool force) {
-    if (server->change() || force) {
+    if (server->isChanged() || force) {
         serverState state;
         state.blockedBySniffThread = blockedBySniffThread;
         server->getState(state);
@@ -177,8 +177,7 @@ bool ServerModel::save(QString fileName) {
 }
 
 bool ServerModel::searchInFiles(SearchCommand &command) {
-    parser->setSearchCommand(command);
-    parser->executeParseloop(command.filenames);
+    parser->search(command);
 
     QString str = command.filenames.at(command.filenames.size()-1);
     str = str.left(str.lastIndexOf("/")) + "/Search";

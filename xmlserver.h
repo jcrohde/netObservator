@@ -38,15 +38,13 @@ public:
     const QString &getContent() {return output[currentOutputIter];}
     void getState(serverState &state);
 
-    bool change() {return changed;}
+    bool isChanged() {return changed;}
 
     bool copy(const QString &destination);
 
     void clear();
 
     bool isEmpty() {return empty;}
-
-    void setSniffed(const QStringList &slices);
 
     const QStringList &getSliceNames() {return sliceNames;}
 

@@ -58,7 +58,6 @@ private:
 
     std::vector<SniffObserver*> observers;
 
-    QString xmlContent;
     QString filterString;
     QStandardItemModel *display;
 

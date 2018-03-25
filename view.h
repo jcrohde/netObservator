@@ -44,7 +44,6 @@ protected:
 
     virtual void rewriteInfo();
     virtual void init();
-    //ViewXmlReader *xmlReader;
 };
 
 /*--------------------------------------------------------------------------*/

@@ -41,14 +41,13 @@ void XmlServer::loadFolder(QString folderName, const QStringList &fileNames) {
     folderLoaded = true;
     this->folderName = folderName;
     sliceNames = fileNames;
-
 }
 
 bool XmlServer::search(SearchCommand cmd) {
     QString result;
 
     bool valid = true;
-    parser->search(title,cmd);
+    parser->search(cmd, title);
 
     if (valid) {
         title = title.left(title.size() - 5) + "Search.pcap";
@@ -113,8 +112,4 @@ void XmlServer::setAsLastDocument(QString &document) {
         output.removeLast();
 
     output.append(document);
-}
-
-void XmlServer::setSniffed(const QStringList &slices) {
-    sliceNames = slices;
 }

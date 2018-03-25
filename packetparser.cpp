@@ -44,13 +44,19 @@ void PacketParser::extract(const QString &filename, std::set<ipAddress> &addr) {
     addr = this->addr;
 }
 
-void PacketParser::search(const QString &filename, const SearchCommand &command) {
-    this->command = command;
+void PacketParser::search(const SearchCommand &command, const QString &filename) {
+    if (command.inFiles) {
+        setSearchCommand(command);
+        executeParseloop(command.filenames);
+    }
+    else {
+        this->command = command;
 
-    parseInstruction instruction;
-    instruction.mode = Mode::SEARCH;
-    instruction.settings = command.settings;
-    parse(filename,instruction);
+        parseInstruction instruction;
+        instruction.mode = Mode::SEARCH;
+        instruction.settings = command.settings;
+        parse(filename,instruction);
+    }
 }
 
 void PacketParser::parse(QString contentFile, const parseInstruction &instruction) {
@@ -62,48 +68,81 @@ void PacketParser::parse(QString contentFile, const parseInstruction &instructio
     }
 }
 
-void PacketParser::executeParseloop(const QStringList &content) {
-    struct pcap_pkthdr *header;
-    const u_char *packetData;
-    int result;
+const std::map<QString,std::vector<long int> > &PacketParser::getAppearance() {
+    for (auto iter = appearance.begin(); iter != appearance.end(); ++ iter) {
+         std::sort(iter->second.begin(),iter->second.end());
+    }
+    return appearance;
+}
 
+void PacketParser::executeParseloop(const QStringList &content) {
     pcap_t *fp;
     char errbuf[PCAP_ERRBUF_SIZE];
 
     for (int i = 0; i < content.size(); i++) {
         fp = pcap_open_offline(content.at(i).toLatin1().data(),errbuf);
 
-
-
-    if (fp != NULL) {
-        if (mode == Mode::SEARCH || mode == Mode::COPY) {
-            QString str;
-            if (mode == Mode::SEARCH) {
-                str = content.at(i).left(content.at(i).size() - 5) + "Search.pcap";
-
-                QDir dir(str.left(str.lastIndexOf("/")) + "/Search");
-                if (!dir.exists())
-                    dir.mkpath(".");
-
-                str = str.left(str.lastIndexOf("/")) + "/Search/" + str.right(str.size()-str.lastIndexOf("/")-1);
+        if (fp != NULL) {
+            if (mode == Mode::SEARCH || mode == Mode::COPY) {
+                QString str = getDumpFile(mode, content.at(i));
+                dumpfile = pcap_dump_open(fp,str.toLatin1().data());
             }
-            else
-                str = destination;
 
-            dumpfile = pcap_dump_open(fp,str.toLatin1().data());
+            runLoop(fp);
+
+            if (mode == Mode::SEARCH || mode == Mode::COPY)
+                pcap_dump_close(dumpfile);
+            pcap_close(fp);
         }
-        do {
-            result = pcap_next_ex(fp, &header, &packetData);
-            if (result > 0)
-                parse(header,packetData,DNSsingleton::getInstance());
-        } while (result > 0);
-
-        if (mode == Mode::SEARCH || mode == Mode::COPY)
-            pcap_dump_close(dumpfile);
-        pcap_close(fp);
-    }
     }
 
+    firePlot();
+}
+
+void PacketParser::parse(const pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
+    getPacketInfo(header,packetData,cache);
+    if (mode != Mode::STATISTICS && mode != Mode::ADDRESSES)
+        presentPacketInfo();
+}
+
+void PacketParser::getPacketInfo(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
+    ipHeader *ih = (ipHeader *) (packetData + 14);
+    u_int ipLength = (ih->versionAndInternetHeaderLength & 0xf) * 4;
+    udpHeader *uh = (udpHeader *) ((u_char*)ih + ipLength);
+
+    colorCode = evaluate(header,packetData,ih,uh);
+}
+
+QString PacketParser::getDumpFile(Mode mode, const QString &contentFile) {
+    QString str;
+    if (mode == Mode::SEARCH) {
+        str = contentFile.left(contentFile.size() - 5) + "Search.pcap";
+
+        QDir dir(str.left(str.lastIndexOf("/")) + "/Search");
+        if (!dir.exists())
+            dir.mkpath(".");
+
+        str = str.left(str.lastIndexOf("/")) + "/Search/" + str.right(str.size()-str.lastIndexOf("/")-1);
+    }
+    else
+        str = destination;
+
+    return str;
+}
+
+void PacketParser::runLoop(pcap_t *fp) {
+    struct pcap_pkthdr *header;
+    const u_char *packetData;
+    int result;
+
+    do {
+        result = pcap_next_ex(fp, &header, &packetData);
+        if (result > 0)
+            parse(header, packetData, DNSsingleton::getInstance());
+    } while (result > 0);
+}
+
+void PacketParser::firePlot() {
     if (mode == Mode::FIRSTPACKET) {
         if (byteCounter.packetNumber >0)
             fireByteNumber(byteCounter);
@@ -130,27 +169,24 @@ void PacketParser::executeParseloop(const QStringList &content) {
     }
 }
 
-void PacketParser::parse(const pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
-    getPacketInfo(header,packetData,cache);
-    if (mode != Mode::STATISTICS && mode != Mode::ADDRESSES)
-        presentPacketInfo(header,packetData);
-}
-
-void PacketParser::getPacketInfo(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
-    ipHeader *ih = (ipHeader *) (packetData + 14);
-    u_int ipLength = (ih->versionAndInternetHeaderLength & 0xf) * 4;
-    udpHeader *uh = (udpHeader *) ((u_char*)ih + ipLength);
-
-    colorCode = evaluate(header,packetData,ih,uh);
-}
-
-void PacketParser::presentPacketInfo(const struct pcap_pkthdr *header,const u_char *packetData) {
+void PacketParser::presentPacketInfo() {
     if ((mode == Mode::FIRSTPACKET && foundNew) || mode == Mode::ALL) {
         if (dynamic_cast<TablePacketInfoPresenter*>(packetInfo) != nullptr)
             dynamic_cast<TablePacketInfoPresenter*>(packetInfo)->show(content.get(),colorCode);
     }
-    else if (mode == Mode::FIRSTPACKET)
+    else if (mode == Mode::FIRSTPACKET) {
         killOldEntries();
+    }
+}
+
+void PacketParser::setSearchCommand(const SearchCommand &command) {
+    this->command = command;
+
+    parseInstruction instruction;
+    instruction.mode = Mode::SEARCH;
+    instruction.settings = command.settings;
+
+    this->configure(instruction);
 }
 
 void PacketParser::killOldEntries() {

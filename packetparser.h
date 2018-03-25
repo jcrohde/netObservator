@@ -33,17 +33,7 @@ public:
     void setDurationTime(int time) {duration = time;}
 
     void extract(const QString &filename, std::set<ipAddress> &addr);
-    void search(const QString &filename, const SearchCommand &command);
-
-    void setSearchCommand(const SearchCommand &command) {
-        this->command = command;
-
-        parseInstruction instruction;
-        instruction.mode = Mode::SEARCH;
-        instruction.settings = command.settings;
-
-        this->configure(instruction);
-    }
+    void search(const SearchCommand &command, const QString &filename = "");
 
     void setPacketInfoPresenter(PacketInfoPresenter *presenter) {packetInfo = presenter;}
 
@@ -52,12 +42,7 @@ public:
 
     void update(const std::vector<ipAddress> &localAddr) {localAddresses = localAddr;}
 
-    const std::map<QString,std::vector<long int> > &getAppearance() {
-        for (auto iter = appearance.begin(); iter != appearance.end(); ++ iter) {
-             std::sort(iter->second.begin(),iter->second.end());
-        }
-        return appearance;
-    }
+    const std::map<QString,std::vector<long int> > &getAppearance();
 
     void executeParseloop(const QStringList &content);
 
@@ -69,7 +54,12 @@ private:
 
     void getPacketInfo(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache);
 
-    void presentPacketInfo(const struct pcap_pkthdr *header,const u_char *packetData);
+    void setSearchCommand(const SearchCommand &command);
+
+    QString getDumpFile(Mode mode, const QString &contentFile);
+    void runLoop(pcap_t *fp);
+    void firePlot();
+    void presentPacketInfo();
     void killOldEntries();
 };
 

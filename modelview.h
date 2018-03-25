@@ -26,7 +26,7 @@ struct modelView {
     DatabaseView view;
 
     modelView()
-        : view(), model() {
+        : model(), view() {
         view.getContent = [&](QString &str) {str = model.getContent();};
     }
 };
