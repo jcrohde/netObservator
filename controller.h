@@ -68,6 +68,7 @@ private:
     void loadFolder();
     void saveFile();
     void saveFileAs();
+    QString enterDestination(const QByteArray &title, const QByteArray &filetype);
     void handleSniffing(Command cmd);
 
 public slots:

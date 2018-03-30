@@ -25,6 +25,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "util.h"
 #include "parsescheme.h"
 
+#include <qjsonarray.h>
+
 class PacketParser : public ParseScheme
 {
 public:
@@ -38,6 +40,7 @@ public:
     void setPacketInfoPresenter(PacketInfoPresenter *presenter) {packetInfo = presenter;}
 
     void parse(QString contentFile, const parseInstruction &instruction);
+    void parse(QStringList contentFile, const parseInstruction &instruction);
     void parse(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache);
 
     void update(const std::vector<ipAddress> &localAddr) {localAddresses = localAddr;}
@@ -50,7 +53,8 @@ private:
 
     int duration;
     PacketInfoPresenter *packetInfo;
-
+    QScopedPointer<QXmlStreamWriter> xmlWriter;
+    QScopedPointer<QJsonArray> jsonArray;
 
     void getPacketInfo(const struct pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache);
 
@@ -59,6 +63,8 @@ private:
     QString getDumpFile(Mode mode, const QString &contentFile);
     void runLoop(pcap_t *fp);
     void firePlot();
+    void writeXML();
+    void writeJson();
     void presentPacketInfo();
     void killOldEntries();
 };

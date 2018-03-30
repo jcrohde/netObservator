@@ -23,7 +23,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "settings.h"
 #include "packetinfopresenter.h"
 
-enum class Mode {ALL, FIRSTPACKET, STATISTICS, ADDRESSES, SEARCH, COPY};
+enum class Mode {ALL, FIRSTPACKET, STATISTICS, ADDRESSES, SEARCH, COPY, TOXML, TOJSON};
 
 struct parseInstruction {
     parseInstruction();
@@ -35,6 +35,7 @@ struct parseInstruction {
     bool plotPacketNumber;
     bool plotByteNumber;
     bool timeStampNeeded;
+    bool folder;
 };
 
 class ParseScheme
@@ -58,8 +59,10 @@ protected:
     SearchCommand command;
     bool foundNew;
     std::set<ipAddress> addr;
+    bool showInfo[COLUMNNUMBER];
 
     Mode mode;
+    bool folder;
 
     std::vector<addressItem> addresses;
 

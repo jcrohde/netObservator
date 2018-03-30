@@ -28,6 +28,9 @@ enum class CommandCode {
     SAVEFILEAS,
     SAVEFILE,
 
+    EXPORTXML,
+    EXPORTJSON,
+
     LOADSLICE,
 
     ADDTAB,

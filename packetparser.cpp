@@ -22,12 +22,17 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QDir>
 #include "dnssingleton.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTextStream>
+
 parseInstruction::parseInstruction() {
     mode = Mode::ALL;
     statisticsColumn = (column) 1;
     timeStampNeeded = false;
     plotByteNumber = false;
     destination = "";
+    folder = false;
 }
 
 PacketParser::PacketParser() {
@@ -60,11 +65,15 @@ void PacketParser::search(const SearchCommand &command, const QString &filename)
 }
 
 void PacketParser::parse(QString contentFile, const parseInstruction &instruction) {
+    QStringList content;
+    content.append(contentFile);
+    parse(content, instruction);
+}
+
+void PacketParser::parse(QStringList contentFile, const parseInstruction &instruction) {
     this->configure(instruction);
-    if (contentFile.size() > 0) {
-        QStringList stringList;
-        stringList.append(contentFile);
-        executeParseloop(stringList);
+    if (contentFile.size() > 0 && contentFile.begin()->size() > 0) {
+        executeParseloop(contentFile);
     }
 }
 
@@ -83,15 +92,50 @@ void PacketParser::executeParseloop(const QStringList &content) {
         fp = pcap_open_offline(content.at(i).toLatin1().data(),errbuf);
 
         if (fp != NULL) {
+            QString filename;
+            filename = destination;
+            if (folder) {
+               if (!QDir(filename).exists())
+                   QDir().mkdir(filename);
+               QString smallName = content.at(i).mid(content.at(i).lastIndexOf("/")+1);
+               filename.append("/" + smallName.left(smallName.size()-5));
+               if (mode == Mode::TOXML) filename.append(".xml");
+               else if (mode == Mode::TOJSON) filename.append(".json");
+            }
+            QFile file(filename);
+
             if (mode == Mode::SEARCH || mode == Mode::COPY) {
                 QString str = getDumpFile(mode, content.at(i));
                 dumpfile = pcap_dump_open(fp,str.toLatin1().data());
+            }
+            else if (mode == Mode::TOXML) {
+                file.open(QIODevice::WriteOnly);
+
+                xmlWriter.reset(new QXmlStreamWriter(&file));
+                xmlWriter->setAutoFormatting(true);
+                xmlWriter->writeStartDocument();
+            }
+            else if (mode == Mode::TOJSON) {
+                jsonArray.reset(new QJsonArray);
             }
 
             runLoop(fp);
 
             if (mode == Mode::SEARCH || mode == Mode::COPY)
                 pcap_dump_close(dumpfile);
+            else if (mode == Mode::TOXML) {
+                file.close();
+            }
+            else if (mode == Mode::TOJSON) {
+                QFile file(filename);
+                file.open(QIODevice::WriteOnly);
+                QJsonObject root;
+                root["Packets"] = *jsonArray;
+                QTextStream stream(&file);
+                stream << QJsonDocument(root).toJson(QJsonDocument::Indented);
+                file.close();
+            }
+
             pcap_close(fp);
         }
     }
@@ -101,7 +145,12 @@ void PacketParser::executeParseloop(const QStringList &content) {
 
 void PacketParser::parse(const pcap_pkthdr *header, const u_char *packetData, DNSsingleton &cache) {
     getPacketInfo(header,packetData,cache);
-    if (mode != Mode::STATISTICS && mode != Mode::ADDRESSES)
+    if (mode == Mode::TOXML)
+        writeXML();
+    else if (mode == Mode::TOJSON) {
+        writeJson();
+    }
+    else if (mode != Mode::STATISTICS && mode != Mode::ADDRESSES)
         presentPacketInfo();
 }
 
@@ -167,6 +216,33 @@ void PacketParser::firePlot() {
             }
         }
     }
+}
+
+void PacketParser::writeXML() {
+    xmlWriter->writeStartElement("Packet");
+
+    int c = 0;
+    for (int i = 0; i < COLUMNNUMBER; i++) {
+        if (showInfo[i]) {
+            xmlWriter->writeTextElement(LABEL[i], content.get()[c] );
+            c++;
+        }
+    }
+
+    xmlWriter->writeEndElement();
+}
+
+void PacketParser::writeJson() {
+    int c = 0;
+    QJsonObject packet;
+
+    for (int i = 0; i < COLUMNNUMBER; i++) {
+        if (showInfo[i]) {
+            packet[LABEL[i]] = content.get()[c];
+            c++;
+        }
+    }
+    jsonArray->append(packet);
 }
 
 void PacketParser::presentPacketInfo() {

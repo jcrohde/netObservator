@@ -44,8 +44,6 @@ void XmlServer::loadFolder(QString folderName, const QStringList &fileNames) {
 }
 
 bool XmlServer::search(SearchCommand cmd) {
-    QString result;
-
     bool valid = true;
     parser->search(cmd, title);
 
@@ -92,6 +90,17 @@ bool XmlServer::copy(const QString &destination) {
     parser->parse(title,instruction);
 
     return valid;
+}
+
+void XmlServer::exportFormat(const QString &destination, Mode mode) {
+    parseInstruction instruction;
+    instruction.mode = mode;
+    instruction.folder = sliceNames.size() > 0;
+    instruction.destination = destination;
+    if (instruction.folder)
+        parser->parse(sliceNames, instruction);
+    else
+        parser->parse(title, instruction);
 }
 
 void XmlServer::clear() {

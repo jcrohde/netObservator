@@ -41,6 +41,9 @@ public:
     intAction *saveAction;
     intAction *saveAsAction;
 
+    intAction *exportXmlAction;
+    intAction *exportJsonAction;
+
     intAction *filterAction;
 
     intAction *tableAction;

@@ -29,6 +29,9 @@ MenuBar::MenuBar(QMenuBar *parent) :
     saveAsAction = new intAction(CommandCode::SAVEFILEAS,"Save As",this);
     closeAction = new QAction("Quit",this);
 
+    exportJsonAction = new intAction(CommandCode::EXPORTJSON, "Export to json", this);
+    exportXmlAction = new intAction(CommandCode::EXPORTXML, "Export to XML", this);
+
     newAction->setIcon(QIcon("icons/add.png"));
     clearAction->setIcon(QIcon("icons/new.png"));
     openAction->setIcon(QIcon("icons/open.png"));
@@ -69,6 +72,9 @@ MenuBar::MenuBar(QMenuBar *parent) :
     fileMenu->addAction(saveAction);
     fileMenu->addAction(saveAsAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(exportJsonAction);
+    fileMenu->addAction(exportXmlAction);
+    fileMenu->addSeparator();
     fileMenu->addAction(closeAction);
 
     viewMenu->addAction(statisticsAction);
@@ -106,6 +112,9 @@ MenuBar::MenuBar(QMenuBar *parent) :
     QObject::connect(saveAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(saveAsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
 
+    QObject::connect(exportJsonAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+    QObject::connect(exportXmlAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+
     QObject::connect(filterAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(statisticsAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(trafficAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
@@ -125,6 +134,9 @@ MenuBar::~MenuBar()
 void MenuBar::update(const serverState &state) {
     saveAction->setDisabled(state.empty);
     saveAsAction->setDisabled(state.empty);
+
+    exportJsonAction->setDisabled(state.empty);
+    exportXmlAction->setDisabled(state.empty);
 
     statisticsAction->setDisabled(state.empty);
 

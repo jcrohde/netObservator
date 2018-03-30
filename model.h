@@ -24,6 +24,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "xmlserver.h"
 #include "view.h"
 #include "packetparser.h"
+#include "observers.h"
 
 
 class ViewModel : public serverObserver {
@@ -73,11 +74,15 @@ public:
     bool loadFolder(QString folderName);
     bool save(QString fileName);
 
+    void exportToXml(const QString &destination);
+    void exportToJson(const QString &destination);
+
     bool isEmpty() {return server->isEmpty();}
 
     void update(const sniffState &state);
 
     const QStringList &getSliceNames() {return server->getSliceNames();}
+    void getState(serverState & state) {server->getState(state);}
 
     PacketParser *parser;
 private:

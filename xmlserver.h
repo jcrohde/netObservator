@@ -41,6 +41,7 @@ public:
     bool isChanged() {return changed;}
 
     bool copy(const QString &destination);
+    void exportFormat(const QString &destination, Mode mode);
 
     void clear();
 

@@ -97,6 +97,14 @@ void Controller::executeCommand(Command cmd) {
         saveFile();
     else if (command == CommandCode::SAVEFILEAS)
         saveFileAs();
+    else if (command == CommandCode::EXPORTXML) {
+        QString destination = enterDestination("Export to XML", "xml");
+        if (destination.size() > 0) model->server.exportToXml(destination);
+    }
+    else if (command == CommandCode::EXPORTJSON) {
+        QString destination = enterDestination("Export to json", "json");
+        if (destination.size() > 0) model->server.exportToJson(destination);
+    }
     else if (command == CommandCode::BACK)
         model->server.changeText(false);
     else if (command == CommandCode::FORWARD)
@@ -175,6 +183,18 @@ void Controller::saveFileAs() {
         model->server.save(fileName);
         lastSavedFileName = fileName;
     }
+}
+
+QString Controller::enterDestination(const QByteArray &title, const QByteArray &filetype) {
+    QString destination = "";
+
+    serverState state;
+    model->server.getState(state);
+    if (state.sliceNames.size() == 0)
+        destination = fileDialog.getSaveFileName(NULL,QObject::tr(title), state.title.left(state.title.size() - 5), QObject::tr(filetype + " (*." + filetype + ")"));
+    else
+        destination = fileDialog.getSaveFileName(NULL, QObject::tr(title), state.title);
+    return destination;
 }
 
 void Controller::handleSniffing(Command cmd) {

@@ -402,6 +402,10 @@ void ParseScheme::store(const parseInstruction &instruction) {
         content.reset(new QString[instruction.settings.shownColumns]);
 
     destination = instruction.destination;
+    for (int i = 0; i < COLUMNNUMBER; i++)
+        showInfo[i] = instruction.settings.showInfo[i];
+
+    folder = instruction.folder;
 }
 
 void ParseScheme::updateStatistics(const parseInstruction &instruction) {
