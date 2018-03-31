@@ -35,7 +35,7 @@ parseInstruction::parseInstruction() {
     folder = false;
 }
 
-PacketParser::PacketParser() {
+PacketParser::PacketParser() : duration(20) {
     parseInstruction instruction;
     configure(instruction);
 }
