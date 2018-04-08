@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -23,7 +23,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "settings.h"
 #include "packetinfopresenter.h"
 
-enum class Mode {ALL, FIRSTPACKET, STATISTICS, ADDRESSES, SEARCH, COPY, TOXML, TOJSON};
+enum class Mode {ALL, FIRSTPACKET, STATISTICS, ADDRESSES, SEARCH, COPY, TOXML, TOJSON, CHART};
 
 struct parseInstruction {
     parseInstruction();
@@ -49,6 +49,7 @@ public:
     void configure(const parseInstruction &instruction);
 
     const std::set<ipAddress> &getSeenAddresses() {return seenAdresses;}
+    const QHash<QString, Protocol> &getChart() {return chart;}
 
 protected:
     pcap_dumper_t *dumpfile;
@@ -82,6 +83,7 @@ private:
 
     Direction direction;
     int colorcode;
+    QHash<QString, Protocol> chart;
 
     ipAddress hostIp;
 
@@ -97,19 +99,21 @@ private:
 
     std::function<void(const pcap_pkthdr*, const u_char*, ipHeader*, udpHeader*, QString&) > element[COLUMNNUMBER];
     std::function<void(const pcap_pkthdr*, const u_char*, ipHeader*, udpHeader*, QString&) > extractAddress;
-    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, QString&) > searchFunc;
-    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, QString&) > dumpFunc;
+    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString&) > searchFunc;
+    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString&) > dumpFunc;
 
-    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, QString&)> insertStatistics;
+    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString&)> insertStatistics;
+    std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString&)> insertChart;
     std::vector<std::function<void(const pcap_pkthdr *packetHeader)> > headerActions;
     std::vector<std::function<void(ipHeader *ih)> > determinations;
     std::vector<std::function<void(const pcap_pkthdr*, const u_char*, ipHeader*, udpHeader*, QString&) > > procedure;
-    std::vector<std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, QString&) > > finalMethod;
+    std::vector<std::function<void(const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString&) > > finalMethod;
 
     void resetCounter();
     void clearMethods();
     void store(const parseInstruction &instruction);
     void updateStatistics(const parseInstruction &instruction);
+    void updateChart(const parseInstruction &instruction);
     void updateDefault(const parseInstruction &instruction);
 };
 

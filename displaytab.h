@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -23,12 +23,14 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "modelview.h"
 #include "controller.h"
 
+
 struct Page : public QDialog {
     Q_OBJECT
 public:
     modelView mv;
 
     Page() : mv() {
+        QHBoxLayout *mainLayout = new QHBoxLayout();
         QVBoxLayout *pageLayout = new QVBoxLayout();
 
         QHBoxLayout *topLayout = new QHBoxLayout();
@@ -41,7 +43,21 @@ public:
         pageLayout->addWidget(new QLabel("Content of Selected Cell:"));
         cellContent = new QTextEdit;
         pageLayout->addWidget(cellContent);
-        setLayout(pageLayout);
+
+        QScrollArea *scr = new QScrollArea();
+        mv.view.dialog = this;
+        QPixmap *map = new QPixmap(100, 100);
+        HostChart chart;
+        chart.set(*map, QHash<QString, Protocol>());
+        QLabel *label = new QLabel;
+        label->setPixmap(*map);
+        scr->setWidget(label);
+        scr->setMaximumWidth(map->width());
+        mv.view.chartScene = scr;
+
+        mainLayout->addWidget(scr);
+        mainLayout->addLayout(pageLayout);
+        setLayout(mainLayout);
 
         cellContent->setReadOnly(true);
         cellContent->setMaximumHeight(90);

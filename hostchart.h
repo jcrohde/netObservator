@@ -15,38 +15,20 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#ifndef TOOLBAR_H
-#define TOOLBAR_H
+#ifndef HOSTCHART_H
+#define HOSTCHART_H
 
-#include <QToolBar>
-#include <QToolButton>
-#include "observers.h"
-#include "command.h"
+#include <QtCharts/QChartView>
+#include "util.h"
 
-class ToolBar : public QToolBar, public serverObserver
+QT_CHARTS_USE_NAMESPACE
+
+class HostChart : public QChart
 {
-    Q_OBJECT
 public:
-    ToolBar();
+    HostChart();
 
-    void update(const serverState &state);
-
-private:
-    QToolButton *addButton;
-    QToolButton *openButton;
-    QToolButton *saveButton;
-    QToolButton *backButton;
-    QToolButton *forwardButton;
-
-private slots:
-    void add();
-    void open();
-    void save();
-    void back();
-    void forward();
-
-signals:
-    void send(CommandCode);
+    void set(QPixmap &map, const QHash<QString, Protocol> &hostProtocols);
 };
 
-#endif // TOOLBAR_H
+#endif // HOSTCHART_H

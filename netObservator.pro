@@ -7,7 +7,8 @@ CONFIG -= console
 
 QT += gui\
       widgets\
-      xml
+      xml\
+      charts
 
 
 SOURCES += main.cpp \
@@ -40,15 +41,16 @@ SOURCES += main.cpp \
     observers.cpp \
     command.cpp \
     viewsettingsdialog.cpp \
-    parsescheme.cpp
+    parsescheme.cpp \
+    hostchart.cpp
 
 
-INCLUDEPATH += ../WpdPack/Include \
+INCLUDEPATH += C:/Users/jan-c/Downloads/WpdPack_4_1_2/WpdPack/Include \
                C:/boost/boost_1_60_0\
                C:/Users/Christian/Downloads/SDL-devel-1.2.15-mingw32/SDL-1.2.15/include
 
 
-LIBS += -L WpdPack/Lib -lwpcap -lpacket\
+LIBS += -L C:/Users/jan-c/Downloads/WpdPack_4_1_2/WpdPack/Lib -lwpcap -lpacket\
         -lws2_32\
         -LC:/boost_1_60_0/stage/lib
 
@@ -85,4 +87,5 @@ HEADERS += \
     command.h \
     viewsettingsdialog.h \
     viewsettingsdialog.h \
-    parsescheme.h
+    parsescheme.h \
+    hostchart.h

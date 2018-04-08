@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 

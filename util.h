@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -26,6 +26,18 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <mutex>
 
+struct Protocol {
+    Protocol() : TCP(0), UDP(0), ICMP(0), IGMP(0), other(0) {}
+
+    int TCP;
+    int UDP;
+    int ICMP;
+    int IGMP;
+    int other;
+
+    inline int sum() const {return TCP + UDP + ICMP + IGMP + other;}
+};
+
 const QString SNIFFED = "sniffed";
 const QString PACKETINFO = "packetInfo";
 
@@ -37,8 +49,6 @@ struct ViewComposition {
 
     presentation mode;
 };
-
-const QString ARBITRARY = "Arbitrary";
 
 struct traffic {
     int packetNumber;

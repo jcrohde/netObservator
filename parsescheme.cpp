@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -23,6 +23,13 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 static bool findaddr(std::vector<ipAddress> &addrVec, ipAddress addr) {
     return std::find(addrVec.begin(),addrVec.end(),addr) != addrVec.end();
 }
+
+enum ProtocolType {
+    TCP = 6,
+    UDP = 17,
+    ICMP = 1,
+    IGMP = 2
+};
 
 ParseScheme::ParseScheme()
 {
@@ -221,7 +228,7 @@ ParseScheme::ParseScheme()
             addr.insert(ih->destAddr);
     };
 
-    searchFunc = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, QString &checksum)
+    searchFunc = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString &checksum)
     {
         bool found = false;
         if (command.mode == command.CASEINSENSITIVE)
@@ -238,12 +245,12 @@ ParseScheme::ParseScheme()
             pcap_dump((unsigned char *)dumpfile, packetHeader, packetData);
     };
 
-    dumpFunc = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, QString &checksum)
+    dumpFunc = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString &checksum)
     {
         pcap_dump((unsigned char *)dumpfile, packetHeader, packetData);
     };
 
-    insertStatistics = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, QString &value) {
+    insertStatistics = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString &value) {
         if (appearance.find(value) != appearance.end()) {
             appearance.at(value).push_back(currentTimeInSeconds);
         }
@@ -252,6 +259,15 @@ ParseScheme::ParseScheme()
             v.push_back(currentTimeInSeconds);
             appearance.insert(std::make_pair(value, v));
         }
+    };
+
+    insertChart = [&](const pcap_pkthdr *packetHeader, const u_char *packetData, ipHeader *ih, udpHeader *uh, QString &value) {
+        int protocol = ih->protocol;
+        if (protocol == TCP) chart[value].TCP++;
+        else if (protocol == UDP) chart[value].UDP++;
+        else if (protocol == ICMP) chart[value].ICMP++;
+        else if (protocol == IGMP) chart[value].IGMP++;
+        else chart[value].other++;
     };
 
     determineColorCode = [&](ipHeader *ih) {
@@ -353,6 +369,8 @@ void ParseScheme::configure(const parseInstruction &instruction) {
 
     if (instruction.mode == Mode::STATISTICS)
         updateStatistics(instruction);
+    else if (instruction.mode == Mode::CHART)
+        updateChart(instruction);
     else if (instruction.mode == Mode::COPY)
         finalMethod.push_back(dumpFunc);
     else if (instruction.mode == Mode::SEARCH) {
@@ -391,6 +409,7 @@ void ParseScheme::clearMethods() {
     procedure.clear();
     finalMethod.clear();
     appearance.clear();
+    chart.clear();
 
     seenAdresses.clear();
 }
@@ -413,6 +432,12 @@ void ParseScheme::updateStatistics(const parseInstruction &instruction) {
     determinations.push_back(determineDirection);
     procedure.push_back(element[instruction.statisticsColumn]);
     finalMethod.push_back(insertStatistics);
+}
+
+void ParseScheme::updateChart(const parseInstruction &instruction) {
+    determinations.push_back(determineDirection);
+    procedure.push_back(element[HOSTNAME]);
+    finalMethod.push_back(insertChart);
 }
 
 void ParseScheme::updateDefault(const parseInstruction &instruction) {
@@ -463,7 +488,7 @@ TablePacketInfoPresenter::colorCode ParseScheme::evaluate(const pcap_pkthdr *pac
     }
 
     for (int i = 0; i < finalMethod.size(); i++)
-        finalMethod[i](packetHeader, packetContent, info[0]);
+        finalMethod[i](packetHeader, packetContent, ih, uh, info[0]);
 
     return (TablePacketInfoPresenter::colorCode)((int)direction + colorcode);
 }

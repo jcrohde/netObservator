@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -17,9 +17,16 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include <QStandardItemModel>
 #include <QFile>
+#include <QLabel>
+#include <QScrollBar>
 #include "view.h"
 
 void View::update(const serverState &state) {
+    if (state.sliceNames.isEmpty()) {
+        sliceNames.clear();
+        sliceNames.append(state.title);
+    }
+    else sliceNames = state.sliceNames;
     if (state.blockedBySniffThread)
         instruction.mode = Mode::FIRSTPACKET;
     else
@@ -59,6 +66,19 @@ void DatabaseView::rewriteInfo() {
         localInstruction.plotByteNumber = localInstruction.plotPacketNumber = false;
         parser->setPacketInfoPresenter(packetInfo);
         parser->parse(xmlContent,localInstruction);
+
+        if (instruction.mode != Mode::FIRSTPACKET && xmlContent.size() > 0) {
+            localInstruction.mode = Mode::CHART;
+            parser->configure(localInstruction);
+            parser->executeParseloop(sliceNames);
+            QPixmap map;
+            chart.set(map, parser->getChart());
+
+            QLabel *l = new QLabel();
+            l->setPixmap(map);
+            chartScene->setWidget(l);
+            chartScene->setMaximumWidth(map.width());
+        }
     }
     else if (instruction.mode == Mode::FIRSTPACKET)
         parser->configure(instruction);

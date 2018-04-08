@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -19,6 +19,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "observers.h"
 #include "packetinfopresenter.h"
 #include "packetparser.h"
+#include "hostchart.h"
 
 #ifndef VIEW_H
 #define VIEW_H
@@ -40,7 +41,7 @@ public:
 
 protected:
     parseInstruction instruction;
-
+    QStringList sliceNames;
 
     virtual void rewriteInfo();
     virtual void init();
@@ -58,6 +59,9 @@ public:
 
     void compose(ViewComposition composition);
     TablePacketInfoPresenter tablePacketInfo;
+    HostChart chart;
+    QScrollArea *chartScene;
+    QDialog * dialog;
 };
 
 /*--------------------------------------------------------------------------*/
@@ -80,7 +84,6 @@ protected:
 
 private:
     column COLUMN;
-    QStringList sliceNames;
 
     void rewriteFileInfo();
 };
@@ -101,8 +104,6 @@ public:
 
 private:
     TrafficPacketInfoPresenter trafficPacketInfo;
-
-    QStringList sliceNames;
 
     void rewriteFileInfo();
 };
