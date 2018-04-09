@@ -8,7 +8,8 @@ CONFIG -= console
 QT += gui\
       widgets\
       xml\
-      charts
+      charts\
+      core\
 
 
 SOURCES += main.cpp \

@@ -19,6 +19,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <ctime>
 #include <mutex>
 #include <functional>
+#include <QStandardPaths>
+#include <QDir>
 #include "dnssingleton.h"
 
 std::mutex myMutex;
@@ -37,12 +39,17 @@ DNSsingleton::DNSsingleton() {
 }
 
 void DNSsingleton::loadDNS() {
-    QString filename = "DNS.xml";
+    QString filename = "/netObservator/DNS.xml";
 
-    QFile file(filename);
-    if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
-        QString content = QString::fromUtf8(file.readAll());
-        readDNS(content);
+    QStringList appDataFolders = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+
+    for (QString appDataFolder : appDataFolders) {
+        QFile file(appDataFolder + filename);
+        if (file.open(QIODevice::ReadOnly|QIODevice::Text)) {
+            QString content = QString::fromUtf8(file.readAll());
+            readDNS(content);
+            break;
+        }
     }
 }
 
@@ -146,7 +153,13 @@ void DNSsingleton::writeDNS(QString &output) {
 }
 
 void DNSsingleton::storeDNS(QString &output) {
-    QFile file("DNS.xml");
+    QString appDataFolder = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(appDataFolder);
+    if (!dir.exists())
+        dir.mkpath(appDataFolder);
+    QString path = dir.absoluteFilePath("DNS.xml");
+
+    QFile file(path);
 
     if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
         file.write(output.toUtf8());
