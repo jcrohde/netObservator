@@ -18,12 +18,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #ifndef HOSTCHART_H
 #define HOSTCHART_H
 
-#include <QtCharts/QChartView>
 #include "util.h"
 
-QT_CHARTS_USE_NAMESPACE
-
-class HostChart : public QChart
+class HostChart
 {
 public:
     HostChart();

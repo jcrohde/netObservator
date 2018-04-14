@@ -16,15 +16,23 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include "viewsettingsdialog.h"
+
 #include <QGroupBox>
 #include <QFrame>
 
 
-ViewSettingsDialog::ViewSettingsDialog(QWidget *parent)
+ViewSettingsDialog::ViewSettingsDialog(int viewSet, QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle("Packet Information");
     setWindowIcon(QIcon("icons/observerLogo.png"));
+
+    setting.shownColumns = 0;
+    for (int i = 0; i < COLUMNNUMBER; i++) {
+        setting.showInfo[COLUMNNUMBER-1-i] = viewSet%2;
+        if (viewSet%2) setting.shownColumns++;
+        viewSet/=2;
+    }
 
     QVBoxLayout *ordering = new QVBoxLayout;
 
@@ -39,6 +47,15 @@ ViewSettingsDialog::ViewSettingsDialog(QWidget *parent)
     setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
     connectSignalsAndSlots();
+}
+
+int ViewSettingsDialog::getSettings() {
+    int set = 0;
+    for (int i = 0; i < COLUMNNUMBER; i++) {
+        set*=2;
+        if (setting.showInfo[i]) set+=1;
+    }
+    return set;
 }
 
 void ViewSettingsDialog::generatePresentationSection(QVBoxLayout *settingLayout) {

@@ -17,14 +17,19 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include "controller.h"
 
+#include "appdata.h"
+
 
 Controller::Controller(Model *m)
     : model(m),
       packetTrafficView(TrafficPacketInfoPresenter::infoType::PACKETS),
       byteTrafficView(TrafficPacketInfoPresenter::infoType::BYTES)
 {
-    settings = new SettingsDialog;
-    viewSettingsDialog = new ViewSettingsDialog;
+    Settings set;
+    getSetting(set);
+
+    settings = new SettingsDialog(set.sniff);
+    viewSettingsDialog = new ViewSettingsDialog(set.viewSettings);
     statisticsDialog = new StatisticsDialog(&statisticsView);
     packetTrafficDialog = new TrafficDialog(&packetTrafficView);
     byteTrafficDialog = new TrafficDialog(&byteTrafficView);
@@ -38,6 +43,7 @@ Controller::Controller(Model *m)
     model->sniff.registerObserver(&filesStrategy);
     model->sniff.registerObserver(packetTrafficDialog);
     model->sniff.registerObserver(byteTrafficDialog);
+    model->sniff.update(set.sniff);
 
     packetTrafficView.parser = &model->parser;
     byteTrafficView.parser = &model->parser;
@@ -59,6 +65,14 @@ Controller::Controller(Model *m)
 
     model->parser.firePacketNumber = [&](traffic &data) {emit packets(data.packetNumber);};
     model->parser.fireByteNumber = [&](traffic &data) {emit bytes(data.packetNumber);};
+    viewSettingsDialog->updateObservers();
+}
+
+Controller::~Controller() {
+    Settings set;
+    settings->getSettings(set.sniff);
+    set.viewSettings = viewSettingsDialog->getSettings();
+    writeSettings(set);
 }
 
 void Controller::setModelView(modelView *mv) {

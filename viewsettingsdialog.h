@@ -29,7 +29,9 @@ class ViewSettingsDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit ViewSettingsDialog(QWidget *parent = 0);
+    explicit ViewSettingsDialog(int viewSet, QWidget *parent = 0);
+    int getSettings();
+    void updateObservers() {emit okBut->clicked();}
 
 private:
 

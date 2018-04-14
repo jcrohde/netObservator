@@ -30,7 +30,7 @@ void ViewModel::setPacketPlot(bool b) {
 
 void ViewModel::update(const viewSettings &set) {
     instruction.settings = set;
-    view->update(instruction);
+    if (view != nullptr) view->update(instruction);
 }
 
 void ViewModel::set(DatabaseView *v) {

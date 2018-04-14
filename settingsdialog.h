@@ -36,7 +36,8 @@ class SettingsDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit SettingsDialog(QWidget *parent = 0);
+    explicit SettingsDialog(const sniffSettings &set, QWidget *parent = 0);
+    void getSettings(sniffSettings& s) {s = setting;}
 
 private:
     QSpinBox *durationSpinBox;

@@ -18,16 +18,11 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #ifndef DNSSINGLETON_H
 #define DNSSINGLETON_H
 
-#include <QXmlStreamReader>
-#include <QXmlStreamWriter>
 #include <memory>
 #include <unordered_set>
 #include "util.h"
 #include "dnsthread.h"
 
-
-const QString DNS = "dns";
-const QString DOMAINNAME = "domainName";
 
 class DNSsingleton
 {
@@ -37,9 +32,6 @@ public:
     void handle(addressItem &item);
 
 private:
-    std::unique_ptr<QXmlStreamReader> reader;
-    std::unique_ptr<QXmlStreamWriter> writer;
-
     std::unordered_set<addressItem> addresses;
     std::vector<addressItem> unknownHostNames;
     std::vector<addressItem> oldHosts;
@@ -52,13 +44,9 @@ private:
     void moveElements(std::vector<addressItem> &source,std::vector<addressItem> &target);
 
     DNSsingleton();
-    void loadDNS();
-    void readDNS(QString content);
 
     ~DNSsingleton();
     void saveDNS();
-    void writeDNS(QString &output);
-    void storeDNS(QString &output);
 };
 
 #endif // DNSSINGLETON_H

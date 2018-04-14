@@ -16,6 +16,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
 #include <QVBoxLayout>
+#include <QScrollArea>
 #include "observers.h"
 #include "packetinfopresenter.h"
 #include "packetparser.h"

@@ -17,13 +17,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include "hostchart.h"
 
-#include <QtCharts/QHorizontalBarSeries>
-#include <QtCharts/QBarSet>
-#include <QtCharts/QLegend>
-#include <QtCharts/QValueAxis>
-#include <QtCharts/QBarCategoryAxis>
+#include <QPainter>
 
-HostChart::HostChart() //: QChart(Q_NULLPTR, Qt::)
+HostChart::HostChart()
 {
 }
 

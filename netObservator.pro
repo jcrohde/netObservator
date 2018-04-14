@@ -8,7 +8,6 @@ CONFIG -= console
 QT += gui\
       widgets\
       xml\
-      charts\
       core\
 
 
@@ -43,7 +42,8 @@ SOURCES += main.cpp \
     command.cpp \
     viewsettingsdialog.cpp \
     parsescheme.cpp \
-    hostchart.cpp
+    hostchart.cpp \
+    appdata.cpp
 
 
 INCLUDEPATH += C:/Users/jan-c/Downloads/WpdPack_4_1_2/WpdPack/Include \
@@ -89,4 +89,5 @@ HEADERS += \
     viewsettingsdialog.h \
     viewsettingsdialog.h \
     parsescheme.h \
-    hostchart.h
+    hostchart.h \
+    appdata.h

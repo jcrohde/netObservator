@@ -29,9 +29,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 class ViewModel : public serverObserver {
 public:
-    ViewModel() {
-        statisticsAttached = false;
-    }
+    ViewModel() : view(nullptr), statisticsAttached(false) {}
 
     void setBytePlot(bool b);
     void setPacketPlot(bool b);

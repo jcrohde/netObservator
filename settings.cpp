@@ -17,10 +17,9 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 #include "settings.h"
 
-
 viewSettings::viewSettings() {
     for (int i = 0; i < COLUMNNUMBER; i++) {
-        showInfo[i] = i == PROTOCOL || i == HOSTPORT || i == HOSTADDRESS;
+        showInfo[i] = i == PROTOCOL || i == HOSTPORT || i == HOSTNAME;
     }
 
     shownColumns = 3;

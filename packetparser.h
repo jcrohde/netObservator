@@ -25,6 +25,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "util.h"
 #include "parsescheme.h"
 
+#include <QXmlStreamWriter>
+
 #include <qjsonarray.h>
 
 class PacketParser : public ParseScheme

@@ -39,6 +39,7 @@ class Controller : public QWidget
     Q_OBJECT
 public:
     Controller(Model *m);
+    ~Controller();
 
     void setModelView(modelView *mv);
 

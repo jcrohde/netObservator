@@ -20,8 +20,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include <QFrame>
 
 
-SettingsDialog::SettingsDialog(QWidget *parent)
-    : QDialog(parent)
+SettingsDialog::SettingsDialog(const sniffSettings &set, QWidget *parent)
+    : setting(set), QDialog(parent)
 {
     setWindowTitle("Settings");
     setWindowIcon(QIcon("icons/observerLogo.png"));
@@ -62,6 +62,7 @@ void SettingsDialog::generateSniffingSection(QVBoxLayout *settingLayout) {
     sniffModeBox->addItem("save and show connections");
     sniffModeBox->addItem("just save");
     sniffModeBox->addItem("just show connections");
+    sniffModeBox->setCurrentIndex((int)setting.mode);
     settingLayout->addWidget(sniffModeBox);
 
     settingLayout->addStretch();
@@ -69,7 +70,7 @@ void SettingsDialog::generateSniffingSection(QVBoxLayout *settingLayout) {
     QHBoxLayout *folderNameLayout = new QHBoxLayout();
     folderNameLayout->addWidget(new QLabel("Save in Folder:"));
     folderNameEdit = new QLineEdit();
-    folderNameEdit->insert("Sniffed");
+    folderNameEdit->insert(setting.storeFolderName);
     folderNameBut = new QPushButton();
     folderNameBut->setIcon(QIcon("icons/open.png"));
     folderNameLayout->addWidget(folderNameEdit);
@@ -81,7 +82,7 @@ void SettingsDialog::generateSniffingSection(QVBoxLayout *settingLayout) {
     QHBoxLayout *sliceNameLayout = new QHBoxLayout();
     sliceNameLayout->addWidget(new QLabel("Slice file name:"));
     sliceNameEdit = new QLineEdit();
-    sliceNameEdit->insert("Slice");
+    sliceNameEdit->insert(setting.sliceFileName);
     sliceNameBut = new QPushButton();
     sliceNameBut->setIcon(QIcon("icons/open.png"));
     sliceNameLayout->addWidget(sliceNameEdit);
@@ -94,7 +95,7 @@ void SettingsDialog::generateSniffingSection(QVBoxLayout *settingLayout) {
     packetLayout->addWidget(new QLabel("Packets per Slice:"));
     sliceSizeBox = new QSpinBox();
     sliceSizeBox->setRange(100,100000);
-    sliceSizeBox->setValue(1000);
+    sliceSizeBox->setValue(setting.sliceSize);
     packetLayout->addWidget(sliceSizeBox);
     settingLayout->addLayout(packetLayout);
 }
