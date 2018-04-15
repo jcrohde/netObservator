@@ -14,6 +14,8 @@ struct Settings {
 void getSetting(Settings &settings);
 void getDNS(std::unordered_set<addressItem> &addresses, std::vector<addressItem> &oldHosts);
 
+QString generateAppDataFolder(const QString &foldername);
+
 void writeDNS(const std::unordered_set<addressItem> &addresses);
 void writeSettings(const Settings &settings);
 

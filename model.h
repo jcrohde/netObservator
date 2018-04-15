@@ -56,7 +56,8 @@ private:
 
 class ServerModel : public SniffObserver {
 public:
-    ServerModel() {blockedBySniffThread = false;}
+    ServerModel() : blockedBySniffThread(false), hasToClean(false) {}
+    ~ServerModel();
 
     void set(XmlServer *s);
 
@@ -87,6 +88,8 @@ private:
     XmlServer *server;
 
     bool blockedBySniffThread;
+    bool hasToClean;
+    QString foldername;
     std::vector<serverObserver*> observers;
 
     void notifyObservers(bool force = false);

@@ -147,6 +147,15 @@ void store(const QString &filename, const QString &output) {
 
 }
 
+QString generateAppDataFolder(const QString &foldername) {
+    QString appDataFolder = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(appDataFolder);
+    if (!dir.exists())
+        dir.mkpath(appDataFolder);
+    dir.mkdir(foldername);
+    return dir.absoluteFilePath(foldername);
+}
+
 void writeDNS(const std::unordered_set<addressItem> &addresses) {
     QString output;
 

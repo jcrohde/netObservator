@@ -15,10 +15,12 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-
 #include "model.h"
+
 #include <QBuffer>
+#include <QDir>
 #include <QTextStream>
+
 
 void ViewModel::setBytePlot(bool b) {
     instruction.plotByteNumber = b;
@@ -43,6 +45,13 @@ void ServerModel::set(XmlServer *s) {
     notifyObservers(true);
 }
 
+ServerModel::~ServerModel() {
+    if (hasToClean) {
+        QDir dir(foldername);
+        dir.removeRecursively();
+    }
+}
+
 void ServerModel::unregisterObserver(serverObserver *observer) {
     std::vector<serverObserver*>::iterator pos = std::find(observers.begin(),observers.end(),observer);
     if (pos != observers.end())
@@ -64,7 +73,6 @@ void ServerModel::notifyObservers(bool force) {
 bool ServerModel::search(SearchCommand &command) {
     if (command.inFiles) {
         searchInFiles(command);
-        //server->setTitle("searched in files");
     }
     else {
         server->search(command);
@@ -91,7 +99,7 @@ bool ServerModel::loadFolder(QString folderName) {
     getPcapFileNames(folderName,names);
 
     if (names.size() > 0) {
-        server->setTitle(folderName);
+        server->setTitle(folderName.mid(folderName.lastIndexOf("/")+1));
         server->loadFolder(folderName, names);
         loadXml(names.at(0));
         notifyObservers();
@@ -102,6 +110,11 @@ bool ServerModel::loadFolder(QString folderName) {
 }
 
 void ServerModel::clear(QString title) {
+    if (hasToClean) {
+        QDir dir(foldername);
+        dir.removeRecursively();
+        hasToClean = false;
+    }
     server->clear();
     server->setTitle(title);
     notifyObservers();
@@ -113,7 +126,9 @@ void ServerModel::update(const sniffState &state) {
         clear("Sniffing");
     }
     else if (!state.sniffing) {
+        hasToClean = true;
         blockedBySniffThread = false;
+        foldername = state.folderName;
         loadFolder(state.folderName);
     }
 }

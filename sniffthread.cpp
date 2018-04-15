@@ -15,11 +15,15 @@ You should have received a copy of the GNU General Public License
 along with netObservator; if not, see http://www.gnu.org/licenses.
 */
 
-#include <ws2tcpip.h>
 #include "sniffthread.h"
+
+#include "appdata.h"
 #include "util.h"
+
 #include <QFile>
 #include <QDir>
+
+#include <ws2tcpip.h>
 
 SniffThread::~SniffThread() {
     observers.clear();
@@ -100,10 +104,7 @@ void SniffThread::init() {
     if (settings.mode != settings.Mode::JUSTSHOW) {
         currentStoreFolderName = settings.storeFolderName + QString(time_string);
 
-        QDir dir(currentStoreFolderName);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
+        currentStoreFolderName = generateAppDataFolder(currentStoreFolderName);
     }
 }
 

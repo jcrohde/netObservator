@@ -75,7 +75,7 @@ public:
             sliceBox->blockSignals(true);
             sliceBox->clear();
             for (int i = 0; i < sliceNames.size(); i++) {
-                sliceBox->addItem(sliceNames[i]);
+                sliceBox->addItem(sliceNames[i].mid(sliceNames[i].lastIndexOf("/")+1));
             }
             sliceBox->blockSignals(false);
             sliceBox->setEditable(true);
@@ -87,7 +87,6 @@ public:
 private:
     QTextEdit *cellContent;
     QStringList slices;
-    //QLabel *sniffLabel;
 
 private slots:
     void printContent(const QModelIndex &index) {
@@ -114,6 +113,7 @@ private:
     Controller *controll;
 
     int displayCount;
+    QString foldername;
 
     void updateController(int index);
 

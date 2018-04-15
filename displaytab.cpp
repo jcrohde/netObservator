@@ -34,6 +34,7 @@ DisplayTab::DisplayTab(Controller *c)
 }
 
 void DisplayTab::update(const serverState &state) {
+    if (state.sliceNames.size() > 0) foldername = state.sliceNames[0].left(state.sliceNames[0].lastIndexOf("/"));
     setTabText(currentIndex(),state.title);
     dynamic_cast<Page*>(widget(currentIndex()))->setSlicesVisible(state.sliceNames);
 }
@@ -80,7 +81,7 @@ void DisplayTab::setToCurrentTab(int index) {
 void DisplayTab::loadSlice(QString sliceName) {
     if (sliceName.size() > 0) {
         Command cmd;
-        cmd.arguments.append(sliceName);
+        cmd.arguments.append(foldername + "/" + sliceName);
         cmd.code = CommandCode::LOADSLICE;
         controll->getCommand(cmd);
     }
