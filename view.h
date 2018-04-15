@@ -57,12 +57,15 @@ public:
     ~DatabaseView() {}
 
     void rewriteInfo();
+    void setChartVisible(bool v) {chartScene->setVisible(v);}
 
     void compose(ViewComposition composition);
     TablePacketInfoPresenter tablePacketInfo;
     HostChart chart;
     QScrollArea *chartScene;
     QDialog * dialog;
+private:
+    bool chartVisible;
 };
 
 /*--------------------------------------------------------------------------*/

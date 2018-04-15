@@ -48,6 +48,9 @@ MenuBar::MenuBar(QMenuBar *parent) :
     trafficAction = new intAction(CommandCode::SHOWTRAFFICDIALOG,"Packet Number",this);
     byteAction = new intAction(CommandCode::SHOWBYTEDIALOG,"Byte Number",this);
     tableAction = new intAction(CommandCode::SHOWCOLUMNSETTINGSDIALOG, "Packet Information",this);
+    hostChartAction = new QAction("Set Host Chart visible", this);
+    hostChartAction->setCheckable(true);
+    hostChartAction->setChecked(true);
 
     searchOnTabAction = new intAction(CommandCode::SHOWSEARCHTABDIALOG,"Search on Tab",this);
     searchOnFilesAction = new intAction(CommandCode::SHOWSEARCHFILEDIALOG,"Search on Files",this);
@@ -81,6 +84,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     viewMenu->addAction(trafficAction);
     viewMenu->addAction(byteAction);
     viewMenu->addAction(tableAction);
+    viewMenu->addAction(hostChartAction);
 
     searchMenu->addAction(searchOnTabAction);
     searchMenu->addAction(searchOnFilesAction);
@@ -124,11 +128,18 @@ MenuBar::MenuBar(QMenuBar *parent) :
 
     QObject::connect(searchOnTabAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
     QObject::connect(searchOnFilesAction,SIGNAL(sigCode(CommandCode)),this,SLOT(processCommand(CommandCode)));
+
+    QObject::connect(hostChartAction, SIGNAL(changed()), this, SLOT(changeChart()));
 }
 
 MenuBar::~MenuBar()
 {
 
+}
+
+void MenuBar::changeChart() {
+    if (hostChartAction->isChecked()) processCommand(CommandCode::CHARTVISIBLE);
+    else processCommand(CommandCode::CHARTINVISIBLE);
 }
 
 void MenuBar::update(const serverState &state) {

@@ -67,7 +67,7 @@ void DatabaseView::rewriteInfo() {
         parser->setPacketInfoPresenter(packetInfo);
         parser->parse(xmlContent,localInstruction);
 
-        if (instruction.mode != Mode::FIRSTPACKET && xmlContent.size() > 0) {
+        if (instruction.mode != Mode::FIRSTPACKET && xmlContent.size() > 0 && chartVisible) {
             localInstruction.mode = Mode::CHART;
             parser->configure(localInstruction);
             parser->executeParseloop(sliceNames);
@@ -84,7 +84,7 @@ void DatabaseView::rewriteInfo() {
         parser->configure(instruction);
 }
 
-DatabaseView::DatabaseView() {
+DatabaseView::DatabaseView() : chartVisible(true) {
     packetInfo = &tablePacketInfo;
 }
 

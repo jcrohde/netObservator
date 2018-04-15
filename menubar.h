@@ -50,7 +50,7 @@ public:
     intAction *statisticsAction;
     intAction *trafficAction;
     intAction *byteAction;
-
+    QAction *hostChartAction;
     intAction *settingsAction;
 
     intAction *searchOnTabAction;
@@ -65,9 +65,8 @@ public:
 
     void update(const serverState &state);
 
-private:
-
 private slots:
+    void changeChart();
     void processCommand(CommandCode command) {emit sendCommand(command);}
 
 signals:

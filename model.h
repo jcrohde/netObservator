@@ -46,6 +46,7 @@ public:
     void attachStatistics(bool attached) {statisticsAttached = attached;}
 
     DatabaseView *view;
+    void setChartVisible(bool v) {if (view != nullptr) view->setChartVisible(v);}
 
 private:
     bool statisticsAttached;

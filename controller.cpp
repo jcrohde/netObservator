@@ -119,6 +119,9 @@ void Controller::executeCommand(Command cmd) {
         QString destination = enterDestination("Export to json", "json");
         if (destination.size() > 0) model->server.exportToJson(destination);
     }
+    else if (command == CommandCode::CHARTVISIBLE || command == CommandCode::CHARTINVISIBLE) {
+        model->view.setChartVisible(command == CommandCode::CHARTVISIBLE);
+    }
     else if (command == CommandCode::BACK)
         model->server.changeText(false);
     else if (command == CommandCode::FORWARD)
