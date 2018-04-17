@@ -57,6 +57,10 @@ void View::init() {
 
 /*--------------------------------------------------------------------------*/
 
+DatabaseView::DatabaseView() : chartVisible(true), chartUpdated(true) {
+    packetInfo = &tablePacketInfo;
+}
+
 void DatabaseView::rewriteInfo() {
     init();
     QString xmlContent;
@@ -67,25 +71,35 @@ void DatabaseView::rewriteInfo() {
         parser->setPacketInfoPresenter(packetInfo);
         parser->parse(xmlContent,localInstruction);
 
-        if (instruction.mode != Mode::FIRSTPACKET && xmlContent.size() > 0 && chartVisible) {
-            localInstruction.mode = Mode::CHART;
-            parser->configure(localInstruction);
-            parser->executeParseloop(sliceNames);
-            QPixmap map;
-            chart.set(map, parser->getChart());
-
-            QLabel *l = new QLabel();
-            l->setPixmap(map);
-            chartScene->setWidget(l);
-            chartScene->setMaximumWidth(map.width());
-        }
+        if (xmlContent.size() > 0) updateChart();
     }
     else if (instruction.mode == Mode::FIRSTPACKET)
         parser->configure(instruction);
 }
 
-DatabaseView::DatabaseView() : chartVisible(true) {
-    packetInfo = &tablePacketInfo;
+void DatabaseView::setChartVisible(bool v) {
+    chartScene->setVisible(v);
+    if (v && !chartUpdated) updateChart();
+    chartVisible = v;
+}
+
+void DatabaseView::updateChart() {
+    if (instruction.mode != Mode::FIRSTPACKET && chartVisible) {
+        parseInstruction localInstruction;
+        localInstruction.mode = Mode::CHART;
+        parser->configure(localInstruction);
+        parser->executeParseloop(sliceNames);
+        QPixmap map;
+        chart.set(map, parser->getChart());
+
+        QLabel *l = new QLabel();
+        l->setPixmap(map);
+        chartScene->setWidget(l);
+        chartScene->setMaximumWidth(map.width());
+
+        chartUpdated = true;
+    }
+    else chartUpdated = false;
 }
 
 /*--------------------------------------------------------------------------*/

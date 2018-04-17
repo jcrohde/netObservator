@@ -29,7 +29,7 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 class ViewModel : public serverObserver {
 public:
-    ViewModel() : view(nullptr), statisticsAttached(false) {}
+    ViewModel() : view(nullptr), statisticsAttached(false), chartVisible(true) {}
 
     void setBytePlot(bool b);
     void setPacketPlot(bool b);
@@ -46,10 +46,11 @@ public:
     void attachStatistics(bool attached) {statisticsAttached = attached;}
 
     DatabaseView *view;
-    void setChartVisible(bool v) {if (view != nullptr) view->setChartVisible(v);}
+    void setChartVisible(bool v) {if (view != nullptr) view->setChartVisible(v); chartVisible = v;}
 
 private:
     bool statisticsAttached;
+    bool chartVisible;
     parseInstruction instruction;
 
     StatisticsView *statisticsView;

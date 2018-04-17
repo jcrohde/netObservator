@@ -32,12 +32,15 @@ void ViewModel::setPacketPlot(bool b) {
 
 void ViewModel::update(const viewSettings &set) {
     instruction.settings = set;
-    if (view != nullptr) view->update(instruction);
+    if (view != nullptr) {
+        view->update(instruction);
+    }
 }
 
 void ViewModel::set(DatabaseView *v) {
     view = v;
     view->getSettings(instruction);
+    view->setChartVisible(chartVisible);
 }
 
 void ServerModel::set(XmlServer *s) {

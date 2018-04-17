@@ -57,7 +57,7 @@ public:
     ~DatabaseView() {}
 
     void rewriteInfo();
-    void setChartVisible(bool v) {chartScene->setVisible(v);}
+    void setChartVisible(bool v);
 
     void compose(ViewComposition composition);
     TablePacketInfoPresenter tablePacketInfo;
@@ -66,6 +66,9 @@ public:
     QDialog * dialog;
 private:
     bool chartVisible;
+    bool chartUpdated;
+
+    void updateChart();
 };
 
 /*--------------------------------------------------------------------------*/
