@@ -95,17 +95,22 @@ void PacketParser::executeParseloop(const QStringList &content) {
             QString filename;
             filename = destination;
             if (folder) {
-               if (!QDir(filename).exists())
+                if (filename.lastIndexOf(".pcap") == filename.size() - 5)
+                    filename = filename.left(filename.size() -5);
+                if (!QDir(filename).exists())
                    QDir().mkdir(filename);
                QString smallName = content.at(i).mid(content.at(i).lastIndexOf("/")+1);
                filename.append("/" + smallName.left(smallName.size()-5));
                if (mode == Mode::TOXML) filename.append(".xml");
                else if (mode == Mode::TOJSON) filename.append(".json");
+               else if (mode == Mode::COPY) filename.append(".pcap");
             }
             QFile file(filename);
 
             if (mode == Mode::SEARCH || mode == Mode::COPY) {
-                QString str = getDumpFile(mode, content.at(i));
+                QString str;
+                if (mode == Mode::SEARCH) str = getDumpFile(mode, content.at(i));
+                else str = filename;
                 dumpfile = pcap_dump_open(fp,str.toLatin1().data());
             }
             else if (mode == Mode::TOXML) {

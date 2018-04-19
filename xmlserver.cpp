@@ -86,8 +86,13 @@ bool XmlServer::copy(const QString &destination) {
     parseInstruction instruction;
     instruction.mode = Mode::COPY;
     instruction.destination = destination;
+    instruction.folder = folderLoaded;
 
-    parser->parse(title,instruction);
+    /*QStringList files;
+    for (QString slice : sliceNames) {
+        files.append(folderName + "/" + slice);
+    }*/
+    parser->parse(sliceNames, instruction);
 
     return valid;
 }
