@@ -169,7 +169,7 @@ void Controller::load() {
         NULL,
         QObject::tr("Open Document"),
         QDir::currentPath(),
-        QObject::tr("") );
+        QObject::tr("pcap (*.pcap)") );
 
     if (!filename.isEmpty() && !model->server.isEmpty())
         addTab();

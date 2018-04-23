@@ -88,11 +88,12 @@ bool XmlServer::copy(const QString &destination) {
     instruction.destination = destination;
     instruction.folder = folderLoaded;
 
-    /*QStringList files;
-    for (QString slice : sliceNames) {
-        files.append(folderName + "/" + slice);
-    }*/
-    parser->parse(sliceNames, instruction);
+    if (folderLoaded) parser->parse(sliceNames, instruction);
+    else {
+        QStringList list;
+        list.append(title);
+        parser->parse(list, instruction);
+    }
 
     return valid;
 }
