@@ -40,6 +40,7 @@ Controller::Controller(Model *m)
     model->view.setStatistics(&statisticsView);
 
     model->server.registerObserver(&tabStrategy);
+    model->server.registerObserver(&filesStrategy);
     model->sniff.registerObserver(&filesStrategy);
     model->sniff.registerObserver(packetTrafficDialog);
     model->sniff.registerObserver(byteTrafficDialog);

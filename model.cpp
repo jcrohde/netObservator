@@ -166,28 +166,6 @@ bool ServerModel::loadSlice(QString slicename) {
 
 bool ServerModel::save(QString fileName) {
     bool valid = server->copy(fileName);
-    /*QFile file(server->getContent());
-
-    if (file.open(QFile::ReadOnly | QFile::Text)) {
-        QTextStream stream(&file);
-        QFile destination(fileName);
-        if (destination.open(QIODevice::WriteOnly|QIODevice::Text)) {
-            destination.write(stream.readAll().toUtf8());
-            destination.close();
-            valid = true;
-        }
-        file.close();
-    }*/
-    /*if (content.size() == 0) {
-        setErrorMessage(QString("No sniffed information to save."),QMessageBox::Warning);
-        return true;
-    }
-
-    if (file.open(QIODevice::WriteOnly|QIODevice::Text)){
-        file.write(content.toUtf8());
-        file.close();
-        return true;
-    }*/
 
     if (!valid)
         setErrorMessage("Can not write on the file " + fileName, QMessageBox::Critical);

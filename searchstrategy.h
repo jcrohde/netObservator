@@ -61,13 +61,14 @@ signals:
     void browse(bool);
 };
 
-class SearchOnFilesStrategy : public SearchStrategy, public SniffObserver
+class SearchOnFilesStrategy : public SearchStrategy, public SniffObserver, public serverObserver
 {
     Q_OBJECT
 public:
     SearchOnFilesStrategy();
 
     void update(const sniffState &state);
+    void update(const serverState &state);
     QString title() {return "Search on Files";}
     void complete(SearchCommand &command);
 

@@ -69,8 +69,16 @@ void SearchOnFilesStrategy::update(const sniffState &state) {
 
         QStringList names;
         getPcapFileNames(state.folderName,names);
-        setFilesForSearch(names);
     }
+}
+
+void SearchOnFilesStrategy::update(const serverState &state) {
+    if (state.sliceNames.isEmpty()) {
+        QStringList list;
+        list.append(state.title);
+        setFilesForSearch(list);
+    }
+    else setFilesForSearch(state.sliceNames);
 }
 
 void SearchOnFilesStrategy::complete(SearchCommand &command) {
