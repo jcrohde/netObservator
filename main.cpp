@@ -21,16 +21,16 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 
 int main(int argc, char* argv[])
 {
+    QApplication app(argc, argv);
+
     DNSsingleton::getInstance();
 
-    QApplication app(argc, argv);
     Model model;
-
     Controller controll(&model);
     MainWindow window(&controll,&model);
     model.sniff.registerObserver(&window);
-
     window.show();
+
     return app.exec();
 }
 

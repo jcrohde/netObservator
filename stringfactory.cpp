@@ -77,7 +77,7 @@ QString StringFactory::getProgramNameLong() {
 }
 
 QString StringFactory::getVersion() {
-    return "1.5";
+    return "2.0";
 }
 
 QString StringFactory::getTitle() {
@@ -89,17 +89,15 @@ QString StringFactory::getTitle() {
 
 QString StringFactory::getHelp() {
     QString content = getTitle();
-    content += getProgramName() + " is a simple to use sniffer app. The goal is to give you an overview about the connections of your computer. You can visualize the traffic by the plotting dialogs or the interactive statistics dialog.<br><br>";
-
-    content += "When you start to sniff with " + getProgramName() +  ", only information about the first packet of a connection with another host will be displayed. ";
-    content += "This information will disappear some time after the last packet from or to this host has been sniffed. Thus you see the hosts you are currently connected with.<br><br>";
-
-    content += "In the settings you can select the information you like to be displayed. Also you can change the way the information is displayed. If you have selected \"save\" in the settings, ";
-    content += "information about all sniffed packets will be stored in .pcap files. Then these slices will be parsed and displayed after sniffing. You can also open entire folders to visualize statistics and plot traffic.";
+    content += getProgramName() + " gives you an overview of the hosts your computer is connected with. Moreover " + getProgramName() + " provides support to analyse your connections. ";
+    content += getProgramName() + " is a simple to use sniffer app. You can visualize the traffic by the plotting dialogs or the interactive statistics dialog.";
 
     content += "<h2>Quick Start</h2>";
     content += "For a quick start just select the device of your internet connection and click the \"Run\"-button. Then the program starts to sniff. ";
     content += "If you press this button a second time, the program will stop to sniff.<br><br>";
+
+    content += "When you start to sniff with " + getProgramName() +  ", only information about the first packet of a connection with another host will be displayed. ";
+    content += "This information will disappear some time after the last packet from or to this host has been sniffed. Thus you see the hosts you are currently connected with. After sniffing you get a chart of the sniffed packets by hostname and protocol.<br><br>";
 
     content += "The information about the sniffed packets are divided into different files (slices). The reason is that depending on your traffic and the memory of your system " + getProgramName();
     content += " might get problems to allocate enough memory to process files containing all information. If you have selected \"save\" in settings a combo Box will appear to support you to select and to display the slices of the recently sniffed packets.<br><br>";
@@ -111,7 +109,8 @@ QString StringFactory::getHelp() {
     content += "<h2>File Menu</h2>";
     content += "By clicking on \"Save\" or \"SaveAs\" in the File menu, you can save the displayed information in a .pcap file. \"New\" adds a new tab. ";
     content += "Moreover by clicking on \"Open File\", you can open a .pcap file and information about all packets of this file will be displayed and you can search on them. ";
-    content += "By \"Open Folder\", you can get the pcap files of an entire folder and visualize the statistics of all files with the statistics dialog. Moreover you can also plot the traffic over all files.";
+    content += "By \"Open Folder\", you can get the pcap files of an entire folder and visualize the statistics of all files with the statistics dialog. Moreover you can also plot the traffic over all files.<br>";
+    content += "In addition you can also export your pcap files as .XML files or .json files, which contain the packet information you have selected in the view dialog.";
 
     content += "<h2>Packet Filter</h2>";
 
@@ -162,7 +161,7 @@ QString StringFactory::getHelp() {
     content += "By clicking at the arrow buttons on the Search on Tab Dialog, you can browse \"&lt;-\" backward and \"-&gt;\" forward through the history of your searches on the current tab.";
 
     content += "<h2>Libraries</h2>";
-    content += getProgramName() + " uses WinPcap, which is a common program for network sniffing. For the GUI Qt 5.7.0 is used.";
+    content += getProgramName() + " uses WinPcap (includes WpdPack 4.1.2), which is a common program for network sniffing. For the GUI Qt 5.10.0 is used.";
 
     return content;
 }
@@ -192,7 +191,7 @@ QString StringFactory::getAbout() {
     QString content = getTitle();
     content = content.append("");
     content = content.append("<br>");
-    content = content.append("&copy; 2015-2016 Jan Christian Rohde<br>jan-christian.rohde@gmx.de");
+    content = content.append("&copy; 2015-2018 Jan Christian Rohde<br>jan-christian.rohde@gmx.de");
     content = content.append("<br><br>");
     content = content.append("License: GNU General Public License 3");
     return content;
