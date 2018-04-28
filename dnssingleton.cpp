@@ -57,7 +57,9 @@ void DNSsingleton::update(std::vector<addressItem> &items, int &maxNumber) {
 
     int size = items.size();
     for (int i = 0; i < size; i++)
-        addresses.insert(items[i]);
+        if (!items[i].hostname.isEmpty()) {
+            addresses.insert(items[i]);
+        }
 
     items.clear();
 

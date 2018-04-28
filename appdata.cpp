@@ -98,7 +98,7 @@ void getSetting(Settings &settings) {
 }
 
 void getDNS(std::unordered_set<addressItem> &addresses, std::vector<addressItem> &oldHosts) {
-    QString filename = "/netObservator/DNS.xml";
+    QString filename = "/DNS.xml";
 
     QStringList appDataFolders = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
 
@@ -121,13 +121,11 @@ void generateDNSDocument(QString &output, const std::unordered_set<addressItem> 
     writer.writeStartElement(DNS);
 
     for (std::unordered_set<addressItem>::const_iterator iter = addresses.begin(); iter != addresses.end(); ++iter) {
-        if (iter->timeStamp > 0) {
-            writer.writeStartElement(DOMAINNAME);
-            writer.writeTextElement("IP",iter->address.toQString());
-            writer.writeTextElement("Name",iter->hostname);
-            writer.writeTextElement("ExpireTime",QString::number(iter->timeStamp));
-            writer.writeEndElement();
-        }
+        writer.writeStartElement(DOMAINNAME);
+        writer.writeTextElement("IP",iter->address.toQString());
+        writer.writeTextElement("Name",iter->hostname);
+        writer.writeTextElement("ExpireTime",QString::number(iter->timeStamp));
+        writer.writeEndElement();
     }
 
     writer.writeEndElement();
