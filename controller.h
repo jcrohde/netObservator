@@ -62,6 +62,8 @@ private:
     StatisticsView statisticsView;
     TrafficView packetTrafficView, byteTrafficView;
 
+    viewSettings viewSet;
+
     void executeCommand(Command cmd);
     bool isSomeDialogOpened();
 

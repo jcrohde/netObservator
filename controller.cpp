@@ -114,11 +114,11 @@ void Controller::executeCommand(Command cmd) {
         saveFileAs();
     else if (command == CommandCode::EXPORTXML) {
         QString destination = enterDestination("Export to XML", "xml");
-        if (destination.size() > 0) model->server.exportToXml(destination);
+        if (destination.size() > 0) model->server.exportToXml(destination, viewSet);
     }
     else if (command == CommandCode::EXPORTJSON) {
         QString destination = enterDestination("Export to json", "json");
-        if (destination.size() > 0) model->server.exportToJson(destination);
+        if (destination.size() > 0) model->server.exportToJson(destination, viewSet);
     }
     else if (command == CommandCode::CHARTVISIBLE || command == CommandCode::CHARTINVISIBLE) {
         model->view.setChartVisible(command == CommandCode::CHARTVISIBLE);
@@ -252,6 +252,7 @@ void Controller::changeText(bool forward) {
 }
 
 void Controller::getSettings(viewSettings &set) {
+    viewSet = set;
     model->view.update(set);
     searchTabDialog->update(set);
     searchFilesDialog->update(set);

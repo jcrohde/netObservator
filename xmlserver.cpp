@@ -98,8 +98,9 @@ bool XmlServer::copy(const QString &destination) {
     return valid;
 }
 
-void XmlServer::exportFormat(const QString &destination, Mode mode) {
+void XmlServer::exportFormat(const QString &destination, Mode mode, const viewSettings &settings) {
     parseInstruction instruction;
+    instruction.settings = settings;
     instruction.mode = mode;
     instruction.folder = sliceNames.size() > 0;
     instruction.destination = destination;

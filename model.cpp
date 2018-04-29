@@ -172,12 +172,12 @@ bool ServerModel::save(QString fileName) {
     return valid;
 }
 
-void ServerModel::exportToXml(const QString & destination) {
-    server->exportFormat(destination, Mode::TOXML);
+void ServerModel::exportToXml(const QString & destination, const viewSettings &settings) {
+    server->exportFormat(destination, Mode::TOXML, settings);
 }
 
-void ServerModel::exportToJson(const QString & destination) {
-    server->exportFormat(destination, Mode::TOJSON);
+void ServerModel::exportToJson(const QString & destination, const viewSettings &settings) {
+    server->exportFormat(destination, Mode::TOJSON, settings);
 }
 
 bool ServerModel::searchInFiles(SearchCommand &command) {

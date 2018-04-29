@@ -75,8 +75,8 @@ public:
     bool loadFolder(QString folderName);
     bool save(QString fileName);
 
-    void exportToXml(const QString &destination);
-    void exportToJson(const QString &destination);
+    void exportToXml(const QString &destination, const viewSettings &settings);
+    void exportToJson(const QString &destination, const viewSettings &settings);
 
     bool isEmpty() {return server->isEmpty();}
 
