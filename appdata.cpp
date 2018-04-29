@@ -69,7 +69,7 @@ void readDNS(QString content, std::unordered_set<addressItem> &addresses, std::v
                         if (entries[2].toInt() > currentTime)
                             addresses.insert(addressItem(ipAddress(entries[0]),entries[1],entries[2].toInt()));
                         else {
-                            addressItem item(entries[0],entries[1],0);
+                            addressItem item(entries[0], entries[1], entries[2].toInt() > 3 ? 3 : entries[2].toInt() - 1);
                             addresses.insert(item);
                             oldHosts.push_back(item);
                         }
@@ -121,11 +121,13 @@ void generateDNSDocument(QString &output, const std::unordered_set<addressItem> 
     writer.writeStartElement(DNS);
 
     for (std::unordered_set<addressItem>::const_iterator iter = addresses.begin(); iter != addresses.end(); ++iter) {
-        writer.writeStartElement(DOMAINNAME);
-        writer.writeTextElement("IP",iter->address.toQString());
-        writer.writeTextElement("Name",iter->hostname);
-        writer.writeTextElement("ExpireTime",QString::number(iter->timeStamp));
-        writer.writeEndElement();
+        if (QString::number(iter->timeStamp) > 0) {
+            writer.writeStartElement(DOMAINNAME);
+            writer.writeTextElement("IP",iter->address.toQString());
+            writer.writeTextElement("Name",iter->hostname);
+            writer.writeTextElement("ExpireTime",QString::number(iter->timeStamp));
+            writer.writeEndElement();
+        }
     }
 
     writer.writeEndElement();
