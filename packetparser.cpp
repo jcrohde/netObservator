@@ -49,7 +49,7 @@ void PacketParser::extract(const QString &filename, std::set<ipAddress> &addr) {
     addr = this->addr;
 }
 
-void PacketParser::search(const SearchCommand &command, const QString &filename) {
+void PacketParser::search(const SearchCommand &command, const QStringList &filename) {
     if (command.inFiles) {
         setSearchCommand(command);
         executeParseloop(command.filenames);

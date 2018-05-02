@@ -28,6 +28,7 @@ struct serverState{
     bool lastDocument;
     bool blockedBySniffThread;
     bool empty;
+    QString foldername;
     QString title;
 };
 

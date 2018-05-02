@@ -18,6 +18,8 @@ along with netObservator; if not, see http://www.gnu.org/licenses.
 #include "xmlserver.h"
 #include "util.h"
 
+#include <QDir>
+
 XmlServer::XmlServer() {
     title = "Title";
     changed = false;
@@ -45,12 +47,32 @@ void XmlServer::loadFolder(QString folderName, const QStringList &fileNames) {
 
 bool XmlServer::search(SearchCommand cmd) {
     bool valid = true;
-    parser->search(cmd, title);
+    if (folderLoaded) parser->search(cmd, sliceNames);
+    else {
+        QStringList list;
+        list.append(title);
+        parser->search(cmd, list);
+    }
 
     if (valid) {
-        title = title.left(title.size() - 5) + "Search.pcap";
-        title = title.left(title.lastIndexOf("/")) + "/Search/" + title.right(title.size()-title.lastIndexOf("/")-1);
-        setAsLastDocument(title);
+        if (folderLoaded) {
+            title += "/Search";
+            folderName += "/Search";
+            QDir dir(title);
+            sliceNames.clear();
+            QStringList entryList = dir.entryList();
+            for (const QString &entry : entryList) {
+                if (entry.lastIndexOf(".pcap") == entry.size() - 5 && entry.size() > 5) {
+                    sliceNames.append(title + "/" + entry);
+                }
+            }
+            setAsLastDocument(sliceNames[0]);
+        }
+        else {
+            title = title.left(title.size() - 5) + "Search.pcap";
+            title = title.left(title.lastIndexOf("/")) + "/Search/" + title.right(title.size()-title.lastIndexOf("/")-1);
+            setAsLastDocument(title);
+        }
 
         changed = true;
     }
@@ -74,6 +96,7 @@ void XmlServer::getState(serverState &state) {
     state.lastDocument = (currentOutputIter == output.size()-1);
     state.addresses = addresses;
     state.title = title;
+    state.foldername = folderName;
     state.sliceNames = sliceNames;
     state.empty = empty;
 

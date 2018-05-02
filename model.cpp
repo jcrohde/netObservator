@@ -181,7 +181,7 @@ void ServerModel::exportToJson(const QString & destination, const viewSettings &
 }
 
 bool ServerModel::searchInFiles(SearchCommand &command) {
-    parser->search(command);
+    parser->search(command, QStringList());
 
     QString str = command.filenames.at(command.filenames.size()-1);
     str = str.left(str.lastIndexOf("/")) + "/Search";

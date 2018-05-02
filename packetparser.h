@@ -37,7 +37,7 @@ public:
     void setDurationTime(int time) {duration = time;}
 
     void extract(const QString &filename, std::set<ipAddress> &addr);
-    void search(const SearchCommand &command, const QString &filename = "");
+    void search(const SearchCommand &command, const QStringList &filename);
 
     void setPacketInfoPresenter(PacketInfoPresenter *presenter) {packetInfo = presenter;}
 
