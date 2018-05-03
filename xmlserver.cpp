@@ -33,7 +33,7 @@ XmlServer::~XmlServer() {
 
 void XmlServer::load(QString xmlContent, std::set<ipAddress> addr) {
     if (xmlContent.size() > 0)
-        output[0] = xmlContent;
+        output[currentOutputIter] = xmlContent;
     addresses = addr;
     changed = true;
     empty = false;
@@ -58,15 +58,8 @@ bool XmlServer::search(SearchCommand cmd) {
         if (folderLoaded) {
             title += "/Search";
             folderName += "/Search";
-            QDir dir(title);
-            sliceNames.clear();
-            QStringList entryList = dir.entryList();
-            for (const QString &entry : entryList) {
-                if (entry.lastIndexOf(".pcap") == entry.size() - 5 && entry.size() > 5) {
-                    sliceNames.append(title + "/" + entry);
-                }
-            }
-            setAsLastDocument(sliceNames[0]);
+            loadSlicesOfCurrentFolder();
+            if (sliceNames.size() > 0) setAsLastDocument(sliceNames[0]);
         }
         else {
             title = title.left(title.size() - 5) + "Search.pcap";
@@ -87,7 +80,13 @@ void XmlServer::changeText(bool forward) {
     else {
         currentOutputIter--;
     }
-    title = output[currentOutputIter];
+    if (folderLoaded) {
+        if (forward) folderName += "/Search";
+        else folderName = folderName.left(folderName.size() - 7);
+        title = folderName;
+        loadSlicesOfCurrentFolder();
+    }
+    else title = output[currentOutputIter];
     changed = true;
 }
 
@@ -142,6 +141,17 @@ void XmlServer::clear() {
     addresses.clear();
     empty = true;
     folderLoaded = false;
+}
+
+void XmlServer::loadSlicesOfCurrentFolder() {
+    QDir dir(folderName);
+    sliceNames.clear();
+    QStringList entryList = dir.entryList();
+    for (const QString &entry : entryList) {
+        if (entry.lastIndexOf(".pcap") == entry.size() - 5 && entry.size() > 5) {
+            sliceNames.append(folderName + "/" + entry);
+        }
+    }
 }
 
 void XmlServer::setAsLastDocument(QString &document) {

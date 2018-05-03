@@ -65,6 +65,7 @@ private:
 
     QString title;
 
+    void loadSlicesOfCurrentFolder();
     void setAsLastDocument(QString &document);
 };
 #endif // XMLSERVER_H
