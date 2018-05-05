@@ -156,8 +156,7 @@ QString StringFactory::getHelp() {
 
     content += "Insert a text and select a column, in which this text should occur. If you like to have an invert match check \"invert match\". Then click on the\"Find\"-button. ";
     content += "Only Information about the packets satisfying your condition will remain. You can also select \"regular expressions\" and search for entries containing your ";
-    content += "inserted regular expression. There are two Search Dialogs: One for searching on the current tab and one to search in files. With the second one you may search in (different) ";
-    content += "files you have generated with netObservator. ";
+    content += "inserted regular expression. You can search on the files of the currently open tab. ";
     content += "By clicking at the arrow buttons on the Search on Tab Dialog, you can browse \"&lt;-\" backward and \"-&gt;\" forward through the history of your searches on the current tab.";
 
     content += "<h2>Libraries</h2>";

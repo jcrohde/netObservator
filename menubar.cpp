@@ -86,10 +86,10 @@ MenuBar::MenuBar(QMenuBar *parent) :
     viewMenu->addAction(tableAction);
     viewMenu->addAction(hostChartAction);
 
-    searchMenu->addAction(searchOnTabAction);
-    searchMenu->addAction(searchOnFilesAction);
+    //searchMenu->addAction(searchOnTabAction);
+    //searchMenu->addAction(searchOnFilesAction);
 
-    searchOnTabAction->setIcon(QIcon("icons/searchTab.png"));
+    searchOnTabAction->setText("Search");
     searchOnFilesAction->setIcon(QIcon("icons/searchFiles.png"));
 
     helpMenu->addAction(hintAction);
@@ -103,7 +103,7 @@ MenuBar::MenuBar(QMenuBar *parent) :
     addAction(filterAction);
     addMenu(viewMenu);
     addAction(settingsAction);
-    addMenu(searchMenu);
+    addAction(searchOnTabAction);
     addMenu(helpMenu);
 
     saveAction->setDisabled(true);
