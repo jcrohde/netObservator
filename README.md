@@ -1,4 +1,4 @@
-Copyright (C) 2015-2016 Jan Christian Rohde
+Copyright (C) 2015-2018 Jan Christian Rohde
 
 This file is part of netObservator.
 
@@ -40,10 +40,10 @@ WARRANTY.
 By the following 3 steps, you can run netObservator:
 
 1.) You need WinPcap to run netObservator. If you have an older version of
-WinPcap or not have WinPcap installed, you can install a new version of WinPcap
-with the installer you got with this package.
+WinPcap or not have WinPcap installed, you can install a new version of
+WinPcap with the installer you got with this package.
 
-2.) Click on "start netObservator". That's it! 
+2.) Click on "start netObservator.bat". That's it! 
 
 3.) Have fun!
 
@@ -51,8 +51,10 @@ with the installer you got with this package.
 
                        GENERAL INFORMATION
 
-netObservator is a simple to use sniffer app. The goal is to give you
-information about the connections of your computer.
+netObservator gives you an overview of the hosts your computer is connected
+with. Moreover netObservator provides support to analyse your connections.
+netObservator is a simple to use sniffer app. You can visualize the traffic by
+the plotting dialogs or the interactive statistics dialog.
 
 When you start to sniff, only information about the first packet of a
 connection with another host will be displayed. This information will
